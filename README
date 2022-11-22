@@ -1,0 +1,6 @@
+To verify the equivalence of two programs:
+
+% python3 anthem-p2p.py file.1.lp file.2.lp file.ug
+
+Optional argument with axioms and lemmas: file.help.spec
+

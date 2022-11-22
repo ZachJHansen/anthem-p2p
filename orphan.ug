@@ -1,0 +1,5 @@
+input: person/1, father/2, mother/2.
+input: living/1.
+output: orphan/1.
+assume: forall X exists Y forall Z(father(X,Z) <-> Y=Z).
+assume: forall X exists Y forall Z(mother(X,Z) <-> Y=Z).
