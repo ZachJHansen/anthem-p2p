@@ -156,6 +156,10 @@ def get_preds_prog(filepath):
         line = line.strip(".\n")
         line = re.sub(r'\+|\-|\*|\\|\/', "", line)          # Remove arithmetics (e.g. t+1 should be treated as a single term)
         line = re.sub(r'\w+\.\.\w+', "INTERVAL", line)      # Remove intervals
+        tup_match = re.findall('\([^\)]+\)', line)          # Replace commas within argument lists with @ special character
+        replacements = [re.sub(",", "@", m) for m in tup_match]
+        for i, m in enumerate(tup_match):
+            line = line.replace(m, replacements[i], 1)
         literals = line.split(",")                          # Split a rule into its literals, remove arithmetic literals (comparisons)
         atomic_literals = [l for l in literals if re.search("<|>|<=|>=|=|!=", l) is None]
         for literal in atomic_literals:
@@ -165,7 +169,7 @@ def get_preds_prog(filepath):
                 for a in atoms:
                     if "(" in a:                            # First-order atom
                         pname = a.split("(")[0]
-                        arity = len(re.findall(",", a)) + 1
+                        arity = len(re.findall("@", a)) + 1
                         predicates.append(pname + "/" + str(arity))
                     else:                                   # Propositional atom
                         predicates.append(a + "/0")
@@ -269,21 +273,22 @@ def generate_spec(completions, context_path, aux):
     # Second add all completions as either assumptions or specs, and all integrity constraints as specs
     # First occurence of forall OR a word followed by iff starts completed definition
     # First occurence of forall OR a not starts an integrity constraint
-    comp_exp = r'forall.*$|\w ?<->.+$'
-    cons_exp = r'forall.*$|.*: ?(not.+$)'
+    comp_exp = r'definition of +(.+): *(forall.*$)|definition of +(.+): *(\w ?<->.+$)'
+    cons_exp = r'constraint.+(forall.*$)|constraint.+.*: ?(not.+$)'
     for line in completions:
         comp = re.search(comp_exp, line)
         cons = re.search(cons_exp, line)
         if comp:
-            predicate = (re.search(r'of .*:', line)).group().strip(":")
-            predicate = re.sub(r'of ', "", predicate)
+            #predicate = (re.search(r'definition of .*:', line)).group().strip(":")
+            #predicate = re.sub(r'definition of ', "", predicate)
+            predicate = comp.group(1)
             if predicate in privates_map.keys():
-                spec = "assume: " + comp.group()
+                spec = "assume: " + comp.group(2)
                 spec_string += terminator(spec)
                 inp = "input: " + privates_map[predicate]
                 spec_string += terminator(inp)
             elif predicate in publics:
-                spec = "spec: " + comp.group()
+                spec = "spec: " + comp.group(2)
                 spec_string += terminator(spec)
             else:
                 print("Unknown predicate: ", predicate)
