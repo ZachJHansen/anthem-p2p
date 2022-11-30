@@ -152,23 +152,23 @@ def get_preds_prog(filepath):
     raw = f.readlines()
     f.close()
     for line in raw:
-        #print("Processing line", line)
         line = re.sub(":-", ",", line)                      # Remove rule operators, newlines, and periods
         line = line.strip(".\n")
-        line = re.sub(r'\+|\-|\*|\\|\/', "", line)                 # Remove arithmetics (e.g. t+1 should be treated as a single term)
+        line = re.sub(r'\+|\-|\*|\\|\/', "", line)          # Remove arithmetics (e.g. t+1 should be treated as a single term)
         line = re.sub(r'\w+\.\.\w+', "INTERVAL", line)      # Remove intervals
-        #print("Post-processing line", line)
-        atom_candidates = re.findall(r'\w+\([^\)]+\)|[a-z]+[a-z\d_]*', line)
-        #print("Atom candidates: ", atom_candidates)
-        if len(atom_candidates) > 0:
-            atoms = [a for a in atom_candidates if not a == 'not']
-            for a in atoms:
-                if "(" in a:                                # First-order atom
-                    pname = a.split("(")[0]
-                    arity = len(re.findall(",", a)) + 1
-                    predicates.append(pname + "/" + str(arity))
-                else:                                       # Propositional atom
-                    predicates.append(a + "/0")
+        literals = line.split(",")                          # Split a rule into its literals, remove arithmetic literals (comparisons)
+        atomic_literals = [l for l in literals if re.search("<|>|<=|>=|=|!=", l) is None]
+        for literal in atomic_literals:
+            atom_candidates = re.findall(r'\w+\([^\)]+\)|[a-z]+[a-z\d_]*', literal)
+            if len(atom_candidates) > 0:
+                atoms = [a for a in atom_candidates if not a == 'not']
+                for a in atoms:
+                    if "(" in a:                            # First-order atom
+                        pname = a.split("(")[0]
+                        arity = len(re.findall(",", a)) + 1
+                        predicates.append(pname + "/" + str(arity))
+                    else:                                   # Propositional atom
+                        predicates.append(a + "/0")
     preds = set(predicates)
     print("\nFound the following predicates in file: " + filepath + ":")
     print("\t", preds)
@@ -270,7 +270,6 @@ def generate_spec(completions, context_path, aux):
     # First occurence of forall OR a word followed by iff starts completed definition
     # First occurence of forall OR a not starts an integrity constraint
     comp_exp = r'forall.*$|\w ?<->.+$'
-    #cons_exp = r'forall.*\n|.*(not.+\n)'
     cons_exp = r'forall.*$|.*: ?(not.+$)'
     for line in completions:
         comp = re.search(comp_exp, line)
