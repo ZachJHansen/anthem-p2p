@@ -1,5 +1,3 @@
-# input: n -> integer.
-input: n.
-assume: exists N (n=N).
+input: n -> integer.
 assume: n > 1.
 output: prime/1.

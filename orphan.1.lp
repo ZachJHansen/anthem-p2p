@@ -1,1 +1,1 @@
-orphan(X) :- living(X), father(Z,X), mother(Y,X), not living(Z), not living(Y).
+orphan(X) :- living(X), father(Y,X), mother(Z,X), not living(Y), not living(Z).

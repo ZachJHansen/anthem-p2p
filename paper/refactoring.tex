@@ -1,0 +1,914 @@
+\documentclass{article}
+\usepackage{url}
+\usepackage{named}
+\usepackage{yfonts}
+
+\newtheorem{lem}{Lemma}
+\newtheorem{thm}{Theorem}
+\newtheorem{cor}{Corollary}
+
+\def\ar{\leftarrow}
+\def\lrar{\leftrightarrow}
+\def\beq{\begin{equation}}
+\def\eeq#1{\label{#1}\end{equation}}
+\def\ba{\begin{array}}
+\def\ea{\end{array}}
+\def\gringo{{\sc gringo}}
+\def\clingo{{\sc clingo}}
+\def\anthem{{\sc anthem}}
+\def\vampire{{\sc vampire}}
+\def\num{\overline}
+\def\p2f{\hbox{p2f}}
+\def\no{\emph{not\/}}
+\def\head{\emph{Head\/}}
+\def\body{\emph{Body\/}}
+% \def\uc{\widetilde\forall}
+\def\Sfr{\textfrak{S}}
+\def\val#1#2{\emph{val\,}_{#1}({#2})}
+
+\newcommand{\I}{\mathcal{I}}
+\newcommand{\J}{\mathcal{J}}
+
+\hyphenation{lif-schitz}
+
+\begin{document}
+
+\title{\bf External Behavior of a Logic Program\\
+  and Verification of Refactoring}
+\author{Jorge Fandinno, Zachary Hansen, Yuliya Lierler\\
+  University of Nebraska Omaha\\ \\
+Vladimir Lifschitz and Nathan Temple\\ University of Texas at Austin}
+\date{}
+
+\maketitle
+
+\begin{center}INCOMPLETE DRAFT\end{center}
+
+\section{Introduction}
+
+This note is about the process of refactoring in the context of answer
+set programming, that is, about modifying an ASP program without changing
+its external behavior.  Refactoring a program usually involves a series of
+small changes that improve its structure or performance.  In answer set
+programming, refactoring can serve also for converting code that is
+semantically correct but cannot be executed by the existing solvers into an
+executable program.  For example, the {\sc clingo} program
+\begin{verbatim}
+  composite(I*J) :- I > 1, J > 1.
+        prime(I) :- I = a..b, not composite(I).
+\end{verbatim}
+is a semantically correct definition of the set of primes in the
+interval $\{a,\dots,b\}$, assuming that $a>1$.  This program
+is not executable, because the variables in
+the rule defining \verb|composite/1| are unsafe.  The error message
+\begin{verbatim}
+  grounding stopped because of errors
+\end{verbatim}
+will not disappear even if we indicate that the predicate
+\verb|composite/1| is auxiliary by appending the directive
+\begin{verbatim}
+  #show prime/1.
+\end{verbatim}
+A safe program can be obtained by rewriting the first rule as
+\begin{verbatim}
+  composite(I*J) :- I = 2..b, J = 2..b.
+\end{verbatim}
+This is an example of refactoring, because this modification
+does not change the extent of \verb|prime/1|.
+As the next refactoring step, we can optimize the program using the
+fact that every composite
+number in the interval $\{a,\dots,b\}$ has a divisor in the interval
+$\{2,\dots\lfloor \sqrt b\rfloor\}$:
+\begin{verbatim}
+       sqrt_b(M) :- M = 1..b, M*M <= b, (M+1)*(M+1) > b.
+  composite(I*J) :- sqrt_b(M), I = 2..M, J = 2..b.
+        prime(I) :- I = a..b, not composite(I).
+\end{verbatim}
+
+We are interested in the problem of verifying the correctness of
+refactoring steps like these. We would like to make the concept of external
+behavior of a logic program precise, and to
+design software tools for verifying that a proposed modification of an
+ASP program would have no effect on its external behavior.
+
+In the Abstract Gringo language \cite{geb15}, a program is defined as
+a set of rules, so that a program
+includes neither directives nor comments.  Under this narrow definition,
+the program itself does not tell us which predicate symbols are meant to
+represent the output, and which symbols are considered
+auxiliary.  Changing the
+extent of an auxiliary predicate in the process of refactoring, such
+as the changes in the extent of \verb|composite/1| above, and
+the presence of new auxiliary symbols, such as
+\verb|sqrt_b/1|, do not indicate a mistake.
+So the difference between output symbols and auxiliary symbols is essential
+for the idea of refactoring.
+
+Furthermore, the rules of a program do not show what kind of input is
+supposed to be provided for it.
+Generally, an input for an ASP program can be specified in two ways.
+First, some symbolic constants, such as {\tt a} and {\tt b} in the
+programs above, may be meant to serve as placeholders for elements of
+the input.
+There is no way to decide by looking at the rules
+which symbolic constants are supposed to play this role.
+Second, some predicate symbols occurring in the program may occur in
+the bodies of rules only, not in the heads.  The extents of such
+predicates may be specified as part of input when we run the program.
+
+Some inputs may not conform to the programmer's assumptions about
+the intended use of the program.  For instance, the program above is
+expected to be applied to intervals $\{a,\dots,b\}$ such that $a>1$;
+we are not interested in the cases when the placeholder~{\tt a} is
+replaced by an integer that is not greated than~1 or by a symbolic constant.
+Stable models of a program for ``bad'' inputs are not related to its
+external behavior if the program is used as intended.
+
+To sum up, what we consider external behavior of a set of rules
+depends on how these rules are meant to be used.
+
+In this paper, we make this idea precise
+for the subset of
+Abstract Gringo called mini-\gringo\ \cite[Section~2]{fan20},
+\cite[Section~2.1]{fan22}.   Then we study the special case when
+the proof assistant \anthem\ 
+\cite{fan20} and the theorem prover \vampire\ \cite{vor13}
+ can be used to verify that two mini-\gringo\ programs have the
+ same external behavior.  The three versions of the prime number program
+above will be used as a running example.
+
+\section{On the syntax of mini-\gringo}\label{sec:mg}
+
+There are minor syntactic differences between
+mini-\gringo\ and the input language of the grounder \gringo,
+explained by the fact the former is designed for theoretical studies, and the
+latter for actual programming.
+For example, the optimized prime number program from the introduction,
+rewritten in the syntax of mini-\gringo, becomes
+$$\ba {rcl}
+\emph{sqrt\_b\/}(M) &\ar& M = \num  1\,..\,b \,\land\, M\times M \leq b
+          \,\land\, (M+\num 1)\times(M+\num 1) > b,\\
+          \emph{composite\/}(I\times J) &\ar& \emph{sqrt\_b\/}(M) \,\land\,
+                 I = \num 2\,..\,N \,\land\, J = \num 2\,..\,b,\\
+                 \emph{prime\/}(I) &\ar& I = a\,..\,b
+                 \,\land\, \emph{not}\ \emph{composite\/}(I).
+\ea
+$$
+The symbols $\num 1$ and $\num 2$ are ``numerals''---syntactic objects
+representing integers. Distinguishing between an integer and the corresponding
+numeral is sometimes convenient.  In examples of rules and programs, we will
+freely switch between the two styles.
+
+In the definition of mini-\gringo,
+\emph{precomputed terms} are numerals,
+  symbolic constants, and the symbols \emph{inf}, \emph{sup}.
+  We assume that a total order on precomputed terms in chosen, such that
+  \emph{inf} is its least element, \emph{sup} is its greatest element, and,
+ for all integers~$m$ and~$n$,   $\num m < \num n$ iff $m<n$.
+A  \emph{precomputed atom} is an expression of the form $p({\bf t})$, where~$p$
+  is a symbolic constant and~$\bf t$ is a tuple of precomputed terms.
+  A \emph{predicate symbol} is a pair $p/n$, where~$p$ is a symbolic
+  constant and~$n$ is a nonnegative integer.  About an atom $p({\bf t})$ we
+  say that it \emph{contains} $p/n$ if the tuple~$\bf t$ consists of~$n$
+  terms.
+
+\section{User guides}
+
+{\bf Definition 1}$\;$
+A \emph{user guide} is a quadruple
+\beq
+(\emph{PH},\emph{In},\emph{Out},\emph{Dom\/})
+\eeq{ug}
+where
+\begin{itemize}
+\item \emph{PH} is a finite set of symbolic constants, called
+  \emph{placeholders},
+\item \emph{In} and \emph{Out} are disjoint finite sets of predicate
+  symbols, called \emph{input symbols} and \emph{output symbols},
+  and
+\item \emph{Dom} is a set such that each of its elements is a pair $(v,\I)$,
+  where
+  \begin{itemize}
+    \item [(i)]$v$ is a function that maps the set~\emph{PH} of placeholders
+      to the set of precomputed terms that are different from
+      placeholders, and
+    \item  [(ii)] $\I$ is a subset of the set of precomputed atoms that contain
+      an input symbol and do not contain placeholders.
+\end{itemize}
+\end{itemize}
+
+The set \emph{Dom} is the \emph{domain} of the user guide, and
+pairs $(v,\I)$ satisfying conditions~(i) and~(ii) are called \emph{inputs}
+\cite[Section~5.2]{fan20}.
+An input $(v,\I)$ represents a way to choose the values of
+placeholders and the extents of input predicates: for every
+placeholder~$c$, specify $v(c)$ as its value, and add the atoms~$\I$
+to the rules of the program as facts.  If~$\Pi$ is a mini-\gringo\ program
+then $v(\Pi)$ stands for the mini-\gringo\ program obtained from~$\Pi$ by
+replacing every occurrence of every constant~$c$ in the domain of~$v$
+by~$v(c)$
+\cite[Section~2.4]{fan22}.  Using this notation, we can say that
+choosing $(v,\I)$ as input for~$\Pi$ amounts to
+replacing~$\Pi$ by the program $v(\Pi)\cup\I$.
+
+To use a program in accordance with user guide~(\ref{ug})
+means to run it for inputs that belongs to \emph{Dom}.  The
+inputs that do not belong to \emph{Dom} are not related to the
+external behavior of the program when it is used as intended.
+
+\medskip\noindent{\bf Example 1}$\;$ The intended use of the
+programs discussed in the introduction is
+described by user guide~(\ref{ug}) with
+$$\emph{PH} = \{a,b\},\ \emph{In} = \emptyset,\
+  \emph{Out} = \{\emph{prime}/1\},$$
+and with the domain consisting of the inputs $(v,\emptyset)$ such that
+$v(a)$ and $v(b)$ are numerals, and $v(a)>\num 1$.  We will denote this
+user guide by $\emph{UG}_p$.
+
+\medskip\noindent{\bf Example 2}$\;$ We would like to describe the meaning
+of the word \emph{orphan} by a logic program \cite[Section ??]{gel14}.
+The intended use of such a
+program can be described by user guide~(\ref{ug}) with
+$$\emph{PH} = \emptyset,\
+\emph{In} = \{\emph{father/2},\emph{mother/2}, \emph{living/1}\},\
+\emph{Out} = \{\emph{orphan/1}\},$$
+and with the domain consisting all inputs.    We will denote this
+{ser guide by $\emph{UG}_o$.  We will examine
+two possible definitions of \emph{orphan/1} and consider the question of their
+equivalence with respect to $\emph{UG}_o$.
+\medskip
+
+User guides are closely related to
+lp-functions \cite[Section~2]{gel02}
+    and to io-programs \cite[Section~5]{fan20}.
+    Combining a set of rules with a user guide is similar to using these
+    rules as part of
+    an lp-function or an io-program.
+
+\section{External behavior}
+
+    An \emph{output atom} of a user guide~\emph{UG} is a precomputed atom
+    that contains an output symbol of~\emph{UG}.
+    
+    \medskip\noindent{\bf Definition 2}$\;$
+    Let~$(v,\I)$ be an input in the domain
+    of a user guide~\emph{UG}, and let~$\Pi$ be
+a mini-\gringo\ program such that the heads of its rules do not
+contain input symbols of~\emph{UG}.  The \emph{external behavior} of~$\Pi$
+for the user guide~\emph{UG} and the input~$(v,\I)$ is the collection
+of all sets that can be represented as the intersection of a stable model
+of $v(\Pi)\cup\I$ with the set of output atoms of~\emph{UG}.
+
+\medskip\noindent{\bf Example~1, continued}$\;$ If~$\Pi$ is one of the
+three prime number programs from the introduction, and $(v,\I)$ is an
+input in the domain of $\emph{UG}_p$, then the program $v(\Pi)\cup\I$
+is $v(\Pi)$, and it has a unique stable model.  If~$v$ is defined by
+$$v(a)=\num{10},\ v(b)=\num{15},$$
+then that stable model includes the atoms $\emph{prime}(\num{11})$,
+$\emph{prime}(\num{13})$, and some atoms containing
+$\emph{composite}/1$.  The external behavior of each of the programs
+for this input is
+$$\{\{\emph{prime}(\num{11}),\emph{prime}(\num{13})\}\}.$$
+For the safe and optimized versions, this external behavior
+can be calculated by instructing \clingo\ to
+find all answers for the file obtained from the program by appending the
+declarations
+\begin{verbatim}
+  #const a = 10.
+  #const b = 15.
+  #show prime/1.
+\end{verbatim}
+
+\medskip\noindent{\bf Example~2, continued}$\;$ If~$\Pi$ is the program
+\beq\ba l
+\verb|parent_living(X) :- father(Y,X), living(Y).|\\
+\verb|parent_living(X) :- mother(Y,X), living(Y).|\\
+\verb|       orphan(X) :- living(X), not parent_living(X).|
+\ea\eeq{orphan1}
+and $(v,\I)$ is an input in the domain of $\emph{UG}_o$, then the
+program $v(\Pi)\cup\I$ is $\Pi\cup\I$, and it has a unique stable model.
+If~$\I$ is
+\beq\ba l
+\{\emph{father\/}(\emph{jacob},\emph{joseph}),
+\emph{mother\/}(\emph{rachel},\emph{joseph}),\\
+\quad \quad \emph{living}(\emph{jacob}),
+\emph{living}(\emph{rachel}),
+\emph{living}(\emph{joseph})\},
+\ea\eeq{oi}
+then that stable model includes the atoms
+$$\emph{orphan\/}(\emph{jacob}),\ \emph{orphan\/}(\emph{rachel})$$
+and some atoms containing predicate symbols other than \emph{orphan/1}.
+The external behavior of this program for $\emph{UG}_o$ and input~(\ref{oi})
+is
+\beq
+\{\{\emph{orphan\/}(\emph{jacob}),\emph{orphan\/}(\emph{rachel})\}\}.
+\eeq{ebor}
+It can be calculated by instructing \clingo\ to
+find all answers for the file obtained from the program by appending the
+facts
+\begin{verbatim}
+  father(jacob,joseph).
+  mother(rachel,joseph).
+  living(jacob; rachel; joseph).
+\end{verbatim}
+and the directive
+\begin{verbatim}
+  #show orphan/1.
+\end{verbatim}
+
+\medskip\noindent{\bf Example~3}$\;$
+Assume that \emph{UG} has no placeholders and no input symbols,
+that its set of output symbols includes all predicate symbols occurring
+in~$\Pi$, and that its domain is $\{(\emptyset,\emptyset)\}$.  Then
+the external
+behavior of~$\Pi$ with respect to~\emph{UG} and $(\emptyset,\emptyset)$
+is the set of stable models of~$\Pi$.
+
+\section{Equivalence}
+
+\noindent{\bf Definition 3}$\;$
+Let~\emph{UG} be a user guide, and let~$\Pi_1$, $\Pi_2$ be mini-\gringo\
+programs such that the heads of their rules do not contain input symbols
+of~\emph{UG}.  We say that~$\Pi_1$ is \emph{equivalent to~$\Pi_2$ with
+respect to}~\emph{UG} if, for every input $(v,\I)$ in the domain of~\emph{UG},
+the external behavior of $\Pi_1$ for~\emph{UG} and~$(v,\I)$ is the
+same as the external behavior of~$\Pi_2$.
+
+\medskip\noindent{\bf Example~1, continued}$\;$ The three programs from the
+introduction are equivalent to each other with respect to $\emph{UG}_p$.
+We will see that this claim can be verified using the automated reasoning
+tools \anthem\ and \vampire.
+
+\medskip\noindent{\bf Example~2, continued}$\;$ Perhaps surprisingly,
+the one-rule program
+\beq\ba l
+\verb|orphan(X) :- living(X), father(Y,X), mother(Z,X),|\\
+\verb|             not living(Y), not living(Z).|
+\ea\eeq{orphan2}
+is not equivalent to~(\ref{orphan1}) with respect to $\emph{UG}_o$.
+Indeed, the external behavior of this program with respect
+to $\emph{UG}_o$ and input~(\ref{oi}) is $\{\emptyset\}$, which
+is different from~(\ref{ebor}).  We will see
+that \anthem\ and \vampire\ can help us clarify the relationship between
+programs~(\ref{orphan1}) and~(\ref{orphan2}).
+
+\medskip\noindent{\bf Example~3, continued}$\;$
+Assume that \emph{UG} has no placeholders and no input symbols,
+that its set of output symbols includes all predicate symbols occurring
+in~$\Pi_1$ and $\Pi_2$, and that its domain is $\{(\emptyset,\emptyset)\}$.
+Then~$\Pi_1$ and~$\Pi_2$ are equivalent to each other with
+respect to~\emph{UG} iff they have the same stable models.
+
+\medskip
+We understand refactoring a mini-\gringo\ program with respect to a
+  user guide~\emph{UG} as replacing it by a program that is equivalent
+  to it with respect to~\emph{UG}.
+
+This equivalence relation is essentially an
+example of relativized uniform equivalence with projection
+\cite{oet08}, except that the language discussed in that paper includes
+neither arithmetic operations nor placeholders.
+It is \emph{uniform} equivalence, because the programs are extended by
+adding facts, rather than more complex rules; \emph{relativized},
+because these
+  facts~$\I$ are assumed to be atoms containing input symbols,
+  not arbitrary atoms; \emph{with projection}, because
+  we look at the output atoms in the stable model, not the entire model.
+
+\section{Formal notation for user guides}
+
+To design software for verifying the equivalence of
+programs with respect to a user guide, we need to
+represent user guides in formal notation.   The format that we chose for
+user guide (\verb|.ug|) files is similar to the format of
+specification (\verb|.spec|)
+files that \anthem\ operates with \cite[Section~7]{fan20}.  Placeholders
+and input symbols are represented in a \verb|.ug| file by
+\verb|input| statements, for instance:
+\begin{verbatim}
+  input: n.
+  input: living/1, father/2, mother/2.
+\end{verbatim}
+Output symbols are represented by \verb|output| statements:
+\begin{verbatim}
+  output: prime/1.
+\end{verbatim}
+There can be several statements of both kinds in a user guide file, in any
+order.
+
+The question of representing the domain \emph{Dom} by a string of
+characters is more difficult, because the domain is a set of inputs,
+which is generally infinite.
+One approach is to define \emph{assumptions} as sentences of an
+appropriate first-order language, and characterize the domain by a
+list of assumptions; an input belongs to the domain iff it
+satisfies all assumptions in that set.  In a user guide file, every
+assumption will be represented by a statement similar to \verb|assume|
+statements found in \anthem\ specification files.
+
+The language of assumptions for a set \emph{In} of predicate symbols
+is a first-order language
+with two sorts: the sort \emph{generic} and its subsort
+\emph{integer}.
+Variables of the first sort are meant to
+range over arbitrary precomputed terms, and we will identify them with
+variables used in mini-\gringo\ rules.  Variables of the second sort are meant
+to range over numerals (or, equivalently, integers).\footnote{The need to
+  use a language with two sorts is explained by the fact that function symbols
+in a first-order language are supposed to represent total functions, and
+arithmetic operations are not defined on symbolic constants.}
+The signature $\sigma(\emph{In})$ of this language includes
+\begin{itemize}
+\item all precomputed terms as object constants; an object constant
+  is assigned the sort \emph{integer} iff it is a numeral;
+\item the symbols~$+$, $-$ and~$\times$ as binary function constants;
+  their arguments and values have the sort \emph{integer};
+\item all predicate symbols~$p/n$ from \emph{In} as $n$-ary predicate
+  constants; their arguments have the sort \emph{general};
+\item the comparison symbols
+$$\neq\quad<\quad>\quad\leq\quad\geq$$
+as binary predicate constants; their arguments have the sort \emph{general}.
+\end{itemize}
+(Equality is not mentioned here because it is considered part of any
+first-order language.)  An atomic formula $(p/n)({\bf t})$ can be abbreviated
+as $p({\bf t})$. An atomic formula $\prec\!\!(t_1,t_2)$, where~$\prec$ is a
+comparison symbol, can be written as $t_1\prec t_2$.
+
+We follow the convention adopted in {\sc anthem\/}:
+general variables start with $U$, $V$, $W$, $X$, $Y$, and $Z$;
+integer variables start with $I$, $J$, $K$, $L$, $M$, and $N$.
+For example, the formula
+$\exists X (N=X)$ expresses that the value of~$N$ is an object of the sort
+\emph{general\/};  it is universally true, because \emph{integer} is a
+subsort of \emph{general}.  The formula
+$\exists N (N=X)$ expresses that the value of~$X$ is an object of the sort
+\emph{integer\/}; it is generally not true.
+
+To use sentences over the signature $\sigma(\emph{In})$ as conditions
+on an input, we need to relate inputs to interpretations of this
+signature in the sense of first-orger logic.  For every input $(v,\I)$, by
+$I(v,\I)$ we denote the interpretation of~$\sigma(\emph{In})$
+defined as follows:
+\begin{itemize}
+\item
+the domain of the sort \emph{general} in~$I(v,\I)$
+  is the set of all precomputed terms;
+\item
+the domain of the sort \emph{integer} in~$I(v,\I)$ is the set of all numerals;
+\item $I(v,\I)$ interprets every precomputed term~$t$ as~$v(t)$ if~$t$
+  is a symbolic constant in the domain of~$v$, and as~$t$ otherwise;
+\item $I(v,\I)$ interprets the symbols for arithmetic operations
+  as usual in arithmetic;
+\item if $p/n$ is a predicate constant from~\emph{In}, and $\bf c$
+  is an $n$-tuple of object constants, then $I(v,\I)$ interprets
+  $p({\bf c})$ as true iff $p({\bf c})\in\I$;
+\item $I(v,\I)$ interprets the comparison symbols as in the definition of
+  mini-\gringo\ (see Section~\ref{sec:mg}).
+\end{itemize}
+
+Besides \verb|input| and \verb|output| statements, a user guide
+file may include one or more statements consisting of the word
+\verb|assume| followed by a list of sentences over the
+signature~$\sigma(\emph{UG\/})$, called \emph{assumptions}.
+The domain of the user guide is the set of inputs $(v,\I)$ such that
+the interpretation $I(v,\I)$ satisfies all its assumptions.
+
+\medskip\noindent{\bf Example~1, continued}$\;$ The user guide $\emph{UG}_p$
+can be described by the statements
+\begin{verbatim}
+  input: a, b.
+  assume: exists N (a = N) and exists N (b = N).
+  assume: a > 1.
+  output: prime/1.
+\end{verbatim}
+The first two lines can be written be more concisely as
+\begin{verbatim}
+  input: a -> integer, b -> integer.
+\end{verbatim}
+
+\medskip\noindent{\bf Example~2, continued}$\;$ The user guide $\emph{UG}_o$
+can be described by the statements
+\beq\ba l
+\verb| input: living/1, father/2, mother/2.|\\
+\verb| output: orphan/1.|
+\ea\eeq{ugo}
+The absence of \verb|assume| statements shows that the domain of this
+user guide is the set of all inputs.
+
+\section{Proof assistant {\sc anthem-p2p}}
+
+{\sc anthem-p2p} is an extension of the proof assistant \anthem\
+\cite{fan20}.  It uses the resolution theorem prover \vampire\
+\cite{vor13} for verifying equivalence of mini-\gringo\ programs with
+respect to a user guide.
+
+For example, to verify that first two versions of the prime number program
+from the introduction are equivalent with respect to the user guide
+$\emph{UG}_p$, we run {\sc anthem-p2p} on the following input files: the
+unsafe program
+\begin{verbatim}
+  composite(I*J) :- I > 1, J > 1.
+        prime(I) :- I = a..b, not composite(I).
+\end{verbatim}
+the safe program
+\begin{verbatim}
+  composite(I*J) :- I = 2..b, J = 2..b.
+        prime(I) :- I = a..b, not composite(I).
+\end{verbatim}
+and the user guide
+\begin{verbatim}
+  input: a -> integer, b -> integer.
+  assume: a > 1.
+  output: prime/1.
+\end{verbatim}
+{\sc anthem-p2p} transforms the task of verifying equivalence
+with respect to a user guide into the problem of verifying the provability of
+a formula in some
+first-order theory over the signature~$\sigma(\emph{In})$, and
+submits that problem to \vampire.  This transformation is discussed below in
+Section~??.
+
+The user can help \vampire\ organize search process more efficiently by
+supplying {\sc anthem-2p2} with ``helper'' files.  Such a file may instruct
+\vampire\ to prove a series of lemmas before trying to prove the goal formula.
+A helper file can suggest also instances of the induction schema that may be
+useful for the job in hand.
+
+The use of {\sc anthem-2p2} for proving
+equivalence of programs is, generally, an interactive process.
+If \vampire\ does not prove the goal formula in the allotted time then one of
+the options is to give \vampire\ more lemmas to work on and run it
+again.  Alternatively, the user can look for a counterexample that refutes the
+equivalence claim, as in Example~2 above.  {\sc anthem-2p2} can possibly
+help us clarify the source of a puzzling discrepancy between two versions
+of a program if we run it in the presence of additional assume statements.  If
+adding an assumption to the user guide makes the programs equivalent then
+it is possible that perceiving that assumption as self-evident
+is the reason why the discrepancy is puzzling.  For
+instance, we can observe that
+the {\sc anthem-2p2}/\vampire\ team
+proves the equivalence of
+program~(\ref{orphan1}) to program~(\ref{orphan2}) if we extend user
+guide~(\ref{ugo}) by two existence and uniqueness assumptions:
+\begin{verbatim}
+  assume: forall X exists Y forall Z (father(Z,X) <-> Y=Z).
+  assume: forall X exists Y forall Z (mother(Z,X) <-> Y=Z).
+\end{verbatim}
+
+\section{Review: second-order completion}
+
+Let \emph{In} and \emph{Out} be disjoint sets of predicate symbols.
+Considera mini-\gringo\ program~$\Pi$ such that predicate
+symbols from \emph{In} do not occur in the heads of its rules.
+If a predicate symbol~$p/n$ belongs neither to~\emph{In}
+nor to~\emph{Out} but is contained in an atom that occurs in a rule of~$\Pi$
+then we say~$p/n$ is a \emph{private symbol} of~$\Pi$.  The
+\emph{first-order completion} of~$\Pi$ is the conjunction of completed
+definitions of the symbols from \emph{Out} and the private symbols of~$\Pi$.
+The \emph{second-order completion} of~$\Pi$ is the formula obtained from
+the first-order completion of~$\Pi$ by replacing all private symbols by
+existentially quantified predicate variables
+\cite[Section~2.5].\footnote{To be precise, the definition of
+  completion in that paper refers to a
+  ``program with input and output,'' which has four
+  components:~$\Pi$, \emph{In}, \emph{Out}, and a set \emph{PH} of
+  symbolic constants.  However, the first-order and second-order
+  completion formulas do not depend on the choice of~\emph{PH}.  Second,
+  the brief summary above is only applicable to programs without constraints.}
+
+If, for instance, $\emph{In}=\emptyset$, $\emph{Out}=\{q/2\}$, and~$\Pi$
+is the program
+$$
+\ba l
+p(a),\\
+p(b),\\
+\{q(X,Y)\} \ar p(X) \land p(Y),
+\ea$$
+then the first-order completion of~$\Pi$ is
+definitions of~$p/1$ and~$q/2$ are
+$$\ba l
+\forall V(p(V) \lrar V=a \lor V=b)\\
+\land\,
+\forall V_1V_2(q(V_1,V_2) \lrar \exists XY(q(V_1,V_2) \land p(X) \land p(Y)
+\land V_1=X \land V_2=Y)),
+\ea$$
+and the second-order completion is
+\beq
+\ba l
+\exists P(\forall V(P(V) \lrar V=a \lor V=b)\,\land\\
+\quad\;\;\;\forall V_1V_2(q(V_1,V_2) \lrar \exists XY(q(V_1,V_2) \land
+P(X) \land P(Y) \land V_1=X \land V_2=Y))).
+\ea
+\eeq{sof}
+
+Second-order quantifiers in completion formulas can be eliminated if~$\Pi$
+is a ``program without private recursion''
+\cite[Section~6.4]{fan20}.  For instance, formula~(\ref{sof}) is equivalent
+to the first-order formula
+$$
+\forall V_1V_2(q(V_1,V_2) \to (V_1=a \lor V_1=b)\land(V_2=a \lor V_2=b)).
+$$
+
+\section*{Acknowledgements}
+
+Thanks to Michael Gelfond for comments on a draft of this paper.
+
+\bibliographystyle{named}
+\bibliography{bib}
+\end{document}
+
+% \medskip
+% In the rest of the paper, the domain of a user guide is supposed to be
+% specified by a list of assumptions, as in the examples above.
+
+
+\section{Equivalence of tight programs}
+
+Recall that an \emph{io-program} is a quadruple
+\beq
+(\Pi,\emph{PH},\emph{In},\emph{Out\/}),
+\eeq{iop}
+
+The definition of a tight io-program  \cite[Section~6.2]{fan20}
+refers to only the first of its
+four components, which is a mini-\gringo\ program.  In view
+of this fact, we can talk about tightness of mini-\gringo\ programs.
+
+An interpretation~$I$ of~$\sigma(\emph{In})$ is \emph{standard outside of} a
+set \emph{PH} of
+symbolic constants if it is either standard\footnote{Standard interpretations
+  are defined in the appendix.} or can be obtained from a standard
+interpretation by changing the way it interprets symbols from~\emph{PH}
+\cite[Section~5]{fan22}.
+
+By slight abuse of notation, in the statement of the theorem below we
+write \emph{Asm} for the conjunction of all sentences in \emph{Asm}.
+
+\begin{thm}\label{thm1}
+Let~UG be a user guide (PH,In,Out,Asm).
+For any tight mini-\gringo\ programs $\Pi_1$,~$\Pi_2$ that do
+not contain the input symbols of~UG in the heads of rules,
+$\Pi_1$ is equivalent to~$\Pi_2$ with respect to UG iff the sentence
+\end{thm}
+\beq
+\emph{Asm}\to(\hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/}) \lrar
+\hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/}))
+\eeq{thmf}
+\emph{is satisfied by all interpretations that are standard outside of~PH.}
+\medskip
+
+This theorem shows that the equivalence of tight programs may be established
+by choosing a set \emph{Ax} of first-order axioms that are satisfied by
+all interpretations standard outside of~\emph{PH}, and then deriving
+formula~(\ref{thmf}) from \emph{Ax} in classical second-order logic.  Its
+proof is given in Section~\ref{sec:proof}.
+
+\section{Programs without private recursion}
+
+In the special case when the io-programs
+$(\Pi_1,\emph{PH},\emph{In},\emph{Out\/})$ and
+$(\Pi_2,\emph{PH},\emph{In},\emph{Out\/})$ do not involve private recursion
+\cite[Section~6.4]{fan20}, the use of second-order logic can be avoided in the
+following way.  Represent the formula
+COMP$(\Pi_1,\emph{In},\emph{Out\/})$ in the form
+$$\exists {\bf P}\left(\bigwedge_i F_i({\bf P}) \land F'({\bf P})\right),$$
+where $\bf P$ is a list
+% $P_1,P_2,\dots$
+of distinct predicate variables
+corresponding to the
+private symbols\footnote{A \emph{private symbol} of an io-program is
+  a predicate symbol that occurs in its rules and is different from its
+  input symbols and output symbols \cite[Section~5.1]{fan20}.}
+$p_1,p_2,\dots$
+of $(\Pi_1,\emph{PH},\emph{In},\emph{Out\/})$, and~$F_i({\bf P})$ is
+the formula obtained from the completed definition \cite[Section~6.1]{fan20}
+of~$p_i$ in~$\Pi_1$ by replacing each of $p_1,p_2,\dots$ by the
+corresponding member of~$\bf P$. (The conjunctive members
+of $F'({\bf P})$ correspond to the completed definitions of the output
+symbols and to the constraints of~$\Pi_1$.)  Similarly, write
+COMP$(\Pi_2,\emph{In},\emph{Out\/})$ as
+\beq
+\exists {\bf Q}\left(\bigwedge_j G_j({\bf Q}) \land G'({\bf Q})\right),
+\eeq{comp2}
+where $\bf Q$ is a list of distinct predicate variables corresponding to the
+private symbols
+of $(\Pi_2,\emph{PH},\emph{In},\emph{Out\/})$,
+and the formulas $G_j({\bf Q})$ are obtained from the completed
+definitions of these symbols in~$\Pi_2$ by replacing each of them
+by the corresponding variable.  Take one half
+\beq
+\emph{Asm}\to(\hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/}) \to
+\hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/}))
+\eeq{thmf1}
+of condition~(\ref{thmf}).
+Since~$\Pi_2$ does not use private
+recursion, formula~(\ref{comp2}) is equivalent to
+$$\forall {\bf Q}\left(\bigwedge_j G_j({\bf Q}) \to G'({\bf Q})\right)$$
+\cite[Theorem~3]{fan20}.  It follows that formula~(\ref{thmf1}) is
+equivalent to
+$$
+\emph{Asm}\to
+ \left(\exists {\bf P}\left(\bigwedge_i F_i({\bf P}) \land F'({\bf P})\right)
+ \to\forall {\bf Q}\left(\bigwedge_j G_j({\bf Q}) \to G'({\bf Q})\right)\right)
+$$
+and consequently to
+$$
+\forall {\bf PQ}\left(\left(
+    \emph{Asm}\land\bigwedge_i F_i({\bf P}) 
+\land\bigwedge_j G_j({\bf Q}) \right) \to (F'({\bf P})\to G'({\bf Q}))\right)
+$$
+(with the bound variables in {\bf P}, {\bf Q} renamed, if necessary, to ensure
+that they are pairwise disjoint).
+Similarly, the second half
+$$%\beq
+\emph{Asm}\to(\hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/}) \to
+\hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/}))
+$$%\eeq{thmf12}
+of condition~(\ref{thmf}) is equivalent to
+$$
+\forall {\bf PQ}\left(\left(
+    \emph{Asm}\land\bigwedge_i F_i({\bf P}) 
+\land\bigwedge_j G_j({\bf Q}) \right) \to (G'({\bf P})\to F'({\bf Q}))\right).
+$$
+Thus~(\ref{thmf}) can be rewritten as
+$$
+\forall {\bf PQ}\left(\left(
+   \emph{Asm}\land\bigwedge_i F_i({\bf P}) 
+   \land\bigwedge_j G_j({\bf Q}) \right) \to
+          (F'({\bf P})\lrar G'({\bf Q}))\right).
+$$
+Finally, observe that
+the derivability of this formula from \emph{Ax} is equivalent to the
+derivability of the first-order formula
+\beq
+\left(
+    \emph{Asm}\land\bigwedge_i F_i({\bf p})
+\land\bigwedge_j G_j({\bf q}) \right) \to (F'({\bf p})\lrar G'({\bf q})),
+\eeq{thmffo}
+where {\bf p}, {\bf q} are lists of fresh predicate constants.
+
+\section{Replacing programs by specifications}
+
+We see that, under some conditions, proving the
+equivalence of mini-\gringo\ programs can be reduced to deriving
+formulas of form~(\ref{thmffo}).  This reduction is similar to the process of
+proving program correctness that is implemented in \hbox{\anthem} \cite{fan20}.
+The difference is that we talk here about the equivalence of a program to
+another program, instead of the equivalence of a program to a specification.
+
+The relationship between proving the equivalence of programs and the
+operation of \anthem\ can be described also in a different way.
+Define a specification~$\Sfr$ as follows:
+\begin{itemize}
+\item
+the placeholders of~$\Sfr$ are the placeholders~\emph{PH} of user guide~(\ref{ug});
+  \item
+    the input symbols of~$\Sfr$ are the input symbols~\emph{In} of the user guide
+    and the private symbols~{\bf p} of the io-program
+$(\Pi_1,\emph{PH},\emph{In},\emph{Out\/})$;
+\item
+  the assumptions of~$\Sfr$ are the assumptions~\emph{Asm} of the user guide
+  and the formulas~$F_i({\bf p})$;
+\item
+  the specs of~$\Sfr$ are the conjunctive terms of $F'({\bf p})$.
+\end{itemize}
+If we instruct \anthem\ to prove the claim
+that the io-program $(\Pi_2,\emph{PH},\emph{In},\emph{Out})$
+implements~$\Sfr$, then \anthem\ will look for a derivation of the formula
+$$\left(
+    \emph{Asm}\land\bigwedge_i F_i({\bf p})
+\land\bigwedge_j G_j({\bf q}) \right) \to (G'({\bf q})\lrar F'({\bf p}))
+$$
+from \emph{Ax} \cite[Section~6.4]{fan20}.
+This formula is equivalent to~(\ref{thmffo}).
+Thus instructing \anthem\ to verify that
+the io-program $(\Pi_1,\emph{PH},\emph{In},\emph{Out})$
+implements the specification~$\Sfr$ amounts verifying the derivability
+of~(\ref{thmffo}).
+
+\section{Implementation}\label{sec:implementation}
+
+[ Use the example from the introduction. ]
+
+\section{Proof of Theorem \ref{thm1}}\label{sec:proof}
+
+\begin{lem} \label{lem1}
+In the assumptions of Definition~1, the external behavior of~$\Pi$ is
+the collection of all sets~$\J$ of output atoms such that
+$\I\cup\J$ is an io-model of the io-program
+\emph{(}$\Pi$,PH,In,Out\emph{)}.
+\end{lem}
+
+\noindent{\bf Proof}$\;$
+The external behavior of~$\Pi$ can be described as the
+collection of all sets that can be represented as the intersection of
+an io-model of ($\Pi$,\emph{PH},\emph{In},\emph{Out})
+with the set of output atoms.  Every io-model of this io-program
+is the union of~$\I$ with some
+set~$\J$ of output atoms, and the intersection of this union with the
+set of output atoms is~$\J$.
+
+% Inputs of user guide~(\ref{ug}) can be characterized as the
+% inputs $(v,\I)$ of io-program~(\ref{iop}) such that~$\I^\uparrow$
+% satisfies~\emph{Asm}.
+
+\medskip
+\begin{lem}\label{lem2}\strut\cite[Theorem~2]{fan20} $\;$
+  Let~$(v,\I)$ be an input for a tight
+  io-program~\emph{(}$\Pi$,PH,In,Out\emph{)}.  For any
+  set~$\J$ of output atoms, $\I\cup\J$ is an io-model of this io-program
+  for the input~$(v,\I)$ iff the interpretation $v[(\I\cup\J)^\uparrow]$
+  satisfies the program's completion.
+\end{lem}
+
+\noindent{\bf Proof of Theorem~\ref{thm1}}$\;$
+Consider a user guide
+(\emph{PH},\emph{In},\emph{Out},\emph{Asm}),
+and take tight mini-\gringo\ programs $\Pi_1$,~$\Pi_2$ that do
+not contain its input symbols in the heads of rules.
+By Lemma~\ref{lem1}, the assertion that
+$\Pi_1$ is equivalent to~$\Pi_2$  can be reformulated as follows:
+\beq\ba c
+\!\!\hbox{if $(v,\I)$ is an input for (\emph{PH},\emph{In},\emph{Out},\emph{Asm})
+and~$\J$ is a set of output atoms then}\\
+\I\cup\J \hbox{ is an io-model of ($\Pi_1$,\emph{PH},\emph{In},\emph{Out})}\\
+\hbox{iff}\\
+\hbox{it is an io-model of ($\Pi_2$,\emph{PH},\emph{In},\emph{Out}).}
+\ea\eeq{p1}
+Every input for (\emph{PH},\emph{In},\emph{Out},\emph{Asm}) is also an
+input for each of the io-programs $(\Pi_1,\emph{In},\emph{Out\/})$,
+$(\Pi_1,\emph{In},\emph{Out\/})$.  Consequently Lemma~\ref{lem2} allows us to
+conclude that~(\ref{p1}) is equivalent to the condition
+$$\ba c
+\!\!\hbox{if $(v,\I)$ is an input for (\emph{PH},\emph{In},\emph{Out},\emph{Asm})
+and~$\J$ is a set of output atoms then}\\
+  v[(\I\cup\J)^\uparrow]\models
+  \hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/})\lrar
+  \hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/}).
+\ea
+$$
+Thus~$\Pi_1$ is equivalent to~$\Pi_2$ iff for every set~$\I$ of input
+atoms, every set~$\J$ of output atoms, and every function~$v$ that maps
+the members of~\emph{PH} to precomputed terms that do not belong to~\emph{PH},
+\beq \ba l
+\hbox{if $v([\I^\uparrow])\models\emph{Asm}$}\\
+\hbox{then
+  $v[(\I\cup\J)^\uparrow]\models
+  \hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/})\lrar
+  \hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/})$.}
+\ea\eeq{p2}
+Furthermore, the condition $v([\I^\uparrow])\models\emph{Asm}$
+is equivalent to \hbox{$v([(\I\cup\J)^\uparrow])\models\emph{Asm}$},
+because the
+assumptions \emph{Asm} do not contain output symbols.  Consequently~(\ref{p2})
+can be rewritten as
+$$  v[(\I\cup\J)^\uparrow]\models \emph{Asm}\to(
+  \hbox{COMP}(\Pi_1,\emph{In},\emph{Out\/})\lrar
+  \hbox{COMP}(\Pi_2,\emph{In},\emph{Out\/})).
+$$
+It remains to observe that an interpretation of~$\sigma(\emph{In})$ can be
+represented in the form $v[(\I\cup\J)^\uparrow]$ iff it is standard
+outside of~\emph{PH}.
+
+
+\section{The language of assumptions}
+
+
+\end{document}
+
+User guides can be represented in the format of {\sc anthem} specification
+files.  For example, the file
+\begin{verbatim}
+  input: a, b.
+  assume: exists N (a = N) and exists N (b = N).
+  assume: a > 1.
+  output: prime/1.
+\end{verbatim}
+represents user guide~(\ref{ug}) with
+The first two lines in that file can be written more concisely as
+\begin{verbatim}
+  input: a -> integer, b -> integer.
+\end{verbatim}
+Unlike general specification files, user guide files do not contain
+\verb|spec| statements.
+
+\section{External behavior and equivalence}
+
+For any interpretation~$I$ of the signature~$\sigma(\emph{In})$
+and any function~$v$ that maps
+symbolic constants to precomputed terms, by $v[I]$ we denote the
+interpretation obtained from~$I$ by reinterpreting every
+constant~$c$ in the domain of~$v$ according to the formula
+$$v[I](c)= I(v(c)).$$
+
+An~\emph{input} for a user guide~\emph{UG} is a pair $(v,\I)$, where
+\begin{itemize}
+\item[(i)]
+  $v$ is a function that maps the placeholders of~\emph{UG} to precomputed
+terms that are not placeholders, and
+\item[(ii)]
+  $\I$ is a subset of the set of input atoms of~\emph{UG} such that
+  the interpretation~$v[\I^\uparrow]$ satisfies the assumptions
+  of~\emph{UG}.\footnote{The meaning of~$\I^\uparrow$ is defined in the
+    appendix.}
+\end{itemize}

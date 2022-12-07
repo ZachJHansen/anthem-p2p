@@ -1,6 +1,6 @@
 # ANTHEM-P2P
 # Zach Hansen
-# 11/21/22
+# 12/07/22
 #
 # This script automates the process of confirming the equivalence of 
 # two ASP programs using ANTHEM.
@@ -27,13 +27,13 @@
 #   b. Eventually, variable names will be overwritten automatically to X,Y,Z (I,J,K) variants
 #
 # ACTIVE BUGS
-#   1. Variable names must start with X,Y,Z (I,J,K)
 #
 # FEATURES TO CHECK
 #   1. Processing integrity constraints in orig.lp
 #   2. Substring confusion - more_than_three, three
 #   3. Processing programs with #show statements
 #   4. Use input statements from the UG instead of an empty spec when generating completions
+#   5. Variable names must start with X,Y,Z (I,J,K)
 
 import sys, re
 import subprocess as sproc
@@ -338,12 +338,18 @@ def verify(lp_path, spec_path):
     print(anthem_output.stdout)
 
 # Removes #show statements from input programs
+# Renames variables (var becomes Xvar)
 def preprocess(fp):
     outp = []
     show_exp = r'^#show.*$'
+    var_exp = r'\b[A-Z]{1}[\w\']*\b'
     with open(fp, "r") as f:
         raw = f.readlines()
         for line in raw:
+            variables = set(re.findall(var_exp, line))
+            for v in variables:
+                if not v[0] in "XYZIJKLMN":
+                    line = re.sub(v, "X"+v, line)
             if re.search(show_exp, line) is None:
                 outp.append(line)
     f.close()
