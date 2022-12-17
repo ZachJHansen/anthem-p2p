@@ -127,7 +127,7 @@ def generate_completion(file_path, inputs):
     store_completion(completions, name)
     sproc.call("rm " + empty_spec, shell=True)
     # Pass completed definitions back to main
-    return name, completions
+    return completions
 
 # Returns: a mapping from original predicate names to their new names
 def renamed(preds, addendum=1):
@@ -178,36 +178,6 @@ def get_preds_prog(filepath):
     print("\t", preds)
     return preds
 
-# Returns: a list of predicate symbols from original.lp that are private
-# Returns: a list of predicate symbols from original.lp that are public
-def get_predicate_list(comp_raw, context):
-    ctx_file = open(context, "r")
-    ctx_raw = ctx_file.readlines()
-    ctx_file.close()
-    inputs = []
-    outputs = []
-    for line in ctx_raw:
-        if re.search(r'input:', line):
-            p_list = re.sub(r'input:', "", line).strip("\n")
-            for p in p_list.split(","):
-                # Distinguish between predicates (name/arity) and other types of input (e.g. n->integer)
-                if re.search(r'\w/\d', p):                              
-                    inputs.append(p.strip(".").strip())
-        if re.search(r'output:', line):
-            p_list = re.sub(r'output:', "", line).strip("\n")
-            for p in p_list.split(","):
-                outputs.append(p.strip(".").strip())
-    publics = inputs + outputs
-    privates = []
-    for line in comp_raw:
-        if line:
-            predicate = re.search(r'of .*:', line)
-            if predicate:
-                pred = re.sub("of ", "", predicate.group().strip(":"))
-                if pred not in publics:
-                    privates.append(pred)
-    return renamed(privates), publics
-
 # Given a mapping from predicate names to new names, a predicate symbol, and a text string
 # Replace all occurrences of the predicate symbol with its new name in the text string and return it
 def replace_predicate(mapping, pred, spec):
@@ -215,11 +185,8 @@ def replace_predicate(mapping, pred, spec):
     arity = pred.split("/")[1]                                      # Extract n from p/n
     new_name = mapping[pred].split("/")[0]                          # Extract p_1 from p_1/n
     if int(arity) > 0:
-        #base_exp = r'[^\w]?' + pname + r'\('                        # Match 0 or 1 non-word char followed by pname(
         base_exp = r'\W' + pname + r'\(|^' + pname + r'\('           # Match non-word strings followed by pname(, or pname(
     else:
-        #base_exp = r'[^\w]?' + pname + r'[^\w]'                     # Match 0 or 1 non-word char followed by pname
-        #base_exp = r'\W' + pname + r'\(|' + pname + r'\('           # Match non-word strings followed by pname(, or pname(
         base_exp = r'\W' + pname + r'\W|^' + pname + r'\W'                     # Match 1 non-word char or string start followed by pname
     base_exp = re.compile(base_exp)
     occs = re.findall(base_exp, spec)                               # Find matching substrings
@@ -230,15 +197,18 @@ def replace_predicate(mapping, pred, spec):
     print("")
 
     matchbox = [m for m in base_exp.finditer(spec)]
-    new_spec = spec[0:matchbox[0].span()[0]]                        # Add the string up to the first match
-    for i, m in enumerate(matchbox):
-        new_spec += renamed[i]                                      # Add the match with the new name subbed in
-        if i+1 < len(matchbox):
-            nxt = matchbox[i+1]
-            new_spec += spec[m.span()[1]:nxt.span()[0]]             # Add the string up to the next match
-    last = matchbox[-1].span()[1]
-    if last < len(spec):                                            # Add any remaining string after the matches
-        new_spec += spec[last: len(spec)]
+    if len(matchbox) > 0:
+        new_spec = spec[0:matchbox[0].span()[0]]                        # Add the string up to the first match
+        for i, m in enumerate(matchbox):
+            new_spec += renamed[i]                                      # Add the match with the new name subbed in
+            if i+1 < len(matchbox):
+                nxt = matchbox[i+1]
+                new_spec += spec[m.span()[1]:nxt.span()[0]]             # Add the string up to the next match
+        last = matchbox[-1].span()[1]
+        if last < len(spec):                                            # Add any remaining string after the matches
+            new_spec += spec[last: len(spec)]
+    else:                                                               # If no matches, return the original line
+        new_spec = spec
     return new_spec
 
 
@@ -256,13 +226,18 @@ def terminator(spec):
         spec = spec + ".\n"
         return spec
 
-def generate_spec(completions, context_path, aux):
-    privates_map, publics = get_predicate_list(completions, context_path)
+# Input: A list of completed definitions from original.lp
+# Input: The file path pointing to the user guide
+# Input: A list of private predicates occurring in original.lp
+# Input: A list of public predicates occurring in original.lp
+# Input: A string of helper lemmas
+# Output: The file path pointing to the resulting spec
+def generate_spec(completions, context_path, privates, publics, aux):
     # Final spec should combine the completed definitions from the text file at completion_path with the context at context_path
-    final_spec = re.sub(".ug", "-final.spec", context_path)
     # Don't change the original context, just create a new, extended version
+    final_spec = re.sub(".ug", "-final.spec", context_path)
     spec_gen_output = sproc.run("cp " + context_path + " " + final_spec, shell=True)
-    sproc.run("chmod 666 " + final_spec, shell=True)
+    sproc.run("chmod oug+rw " + final_spec, shell=True)
 
     # First add all lemmas and axioms from aux
     spec_string = "\n"
@@ -279,13 +254,11 @@ def generate_spec(completions, context_path, aux):
         comp = re.search(comp_exp, line)
         cons = re.search(cons_exp, line)
         if comp:
-            #predicate = (re.search(r'definition of .*:', line)).group().strip(":")
-            #predicate = re.sub(r'definition of ', "", predicate)
             predicate = comp.group(1)
-            if predicate in privates_map.keys():
+            if predicate in privates:
                 spec = "assume: " + comp.group(2)
                 spec_string += terminator(spec)
-                inp = "input: " + privates_map[predicate]
+                inp = "input: " + predicate
                 spec_string += terminator(inp)
             elif predicate in publics:
                 spec = "spec: " + comp.group(2)
@@ -300,32 +273,10 @@ def generate_spec(completions, context_path, aux):
             print(line)
             sys.exit(1)
 
-    # Replace all private predicates
-    for predicate in privates_map.keys():
-        spec_string = replace_predicate(privates_map, predicate, spec_string)
     with open(final_spec, "a") as f2:
         f2.write(spec_string)
     f2.close()
-    return final_spec, publics
-
-# Create a new alt program with renamed private predicates
-def overwrite(path, publics):
-    all_preds = get_preds_prog(path)
-    for pred in publics:
-        all_preds.discard(pred)
-    privates = list(all_preds)
-    mapping = renamed(privates, 2)
-    with open(path, "r") as f:
-        spec = f.read()
-    f.close()
-    for pred in privates:
-        spec = replace_predicate(mapping, pred, spec)
-    fp = path.split(".")[0] + "-renamed.lp"
-    with open(fp, "w") as f:
-        f.write(spec)
-    f.close()
-    sproc.run("chmod 666 " + fp, shell=True)
-    return fp
+    return final_spec
 
 # Verify lp against spec
 def verify(lp_path, spec_path):
@@ -338,31 +289,48 @@ def verify(lp_path, spec_path):
     print(anthem_output.stdout)
 
 # Removes #show statements from input programs
-# Renames variables (var becomes Xvar)
-def preprocess(fp):
+# Renames private predicates from fp (any predicate not occurring in publics)
+# Returns a mapping from every private predicate to its renamed version
+# Returns a list of public predicates occurring in fp
+def preprocess(fp, ug_publics, file_type):
+    lp_publics = []
+    lp_privates = []
+    all_preds = get_preds_prog(fp)
+    for pred in all_preds:
+        if pred in ug_publics:
+            lp_publics.append(pred)
+        else:
+            lp_privates.append(pred)
+    mapping = renamed(lp_privates, file_type)
     outp = []
     show_exp = r'^#show.*$'
     var_exp = r'\b[A-Z]{1}[\w\']*\b'
     with open(fp, "r") as f:
         raw = f.readlines()
         for line in raw:
-            variables = set(re.findall(var_exp, line))
-            for v in variables:
-                if not v[0] in "XYZIJKLMN":
-                    line = re.sub(v, "X"+v, line)
+            #variables = set(re.findall(var_exp, line))
+            #for v in variables:
+            #    if not v[0] in "XYZIJKLMN":
+            #        line = re.sub(v, "X"+v, line)
             if re.search(show_exp, line) is None:
+                for pred in lp_privates:
+                    line = replace_predicate(mapping, pred, line)
                 outp.append(line)
     f.close()
     newfp = "new-"+fp
     with open(newfp, "w") as f:
         f.writelines(outp)
     f.close()
-    return newfp
+    return lp_privates, lp_publics
 
-# Extract the 'input: p/n' statements from the spec at fp
-def get_inputs(fp):
+# All predicates occurring in an "input: p/n" or "output: p/n" statement
+# are considered public predicates. Input publics are used to 
+# construct an initial specification during completion generation
+def get_ug_preds(fp):
     inputs = []
+    outputs = []
     inp_exp = r'^input:.+$'
+    outp_exp = r'^output:.+$'
     pred_exp = r'\w+/\d+.|\w+/\d+ *,'
     if fp is not None:
         with open(fp, "r") as f:
@@ -373,25 +341,36 @@ def get_inputs(fp):
                     predicates = re.findall(pred_exp, line)
                     for p in predicates:
                         inputs.append(re.sub(r'[., ]', "", p))
+                elif re.search(outp_exp, line) is not None:
+                    line = re.sub(r'^output:', "", line)
+                    predicates = re.findall(pred_exp, line)
+                    for p in predicates:
+                        outputs.append(re.sub(r'[., ]', "", p))
+                else:
+                    pass
         f.close()
-        return inputs
+        print("####### Input predicates from UG: #######")
+        print(inputs)
+        print("\n####### Output predicates from UG: #######")
+        print(outputs)
+        return inputs, outputs
     else:
-        return None
+        print("Fatal error")
+        sys.exit(1)
 
 if __name__ == "__main__":
     assert (sys.version_info >= (3, 6, 9)), "This script requires Python v3.6.9 (or later). Try python3"
     files, aux = parse_cmd()
-    files["orig"] = preprocess(files["orig"])
-    files["alt"] = preprocess(files["alt"])
-    inputs = get_inputs(files["ctx"])
-    print("Inputs from UG:")
-    print(inputs)
-    comp_fp, completions = generate_completion(files["orig"], inputs)
+    inputs, outputs = get_ug_preds(files["ctx"])
+    public_preds = list(set(inputs + outputs))
+    orig_privates, orig_publics = preprocess(files["orig"], public_preds, 1)
+    alt_privates, alt_publics = preprocess(files["alt"], public_preds, 2)
+    files["orig"] = "new-"+files["orig"]
+    files["alt"] = "new-"+files["alt"]
+    completions = generate_completion(files["orig"], inputs)
     if files["ctx"]:
-        final_spec, public_preds = generate_spec(completions, files["ctx"], aux) 
+        final_spec = generate_spec(completions, files["ctx"], orig_publics, orig_privates, aux) 
     else:
         sproc.call("touch .spec", shell=True)
-        final_spec, public_preds = generate_spec(completions, ".spec", aux)
-    new_prog = overwrite(files["alt"], public_preds)
-    print("")
-    verify(new_prog, final_spec)
+        final_spec = generate_spec(completions, ".spec", orig_publics, orig_privates, aux) 
+    verify(files["alt"], final_spec)
