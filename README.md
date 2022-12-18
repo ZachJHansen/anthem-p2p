@@ -1,27 +1,29 @@
 # anthem-p2p
-# anthem [![GitHub Release](https://img.shields.io/github/release/potassco/anthem.svg?maxAge=3600)](https://github.com/potassco/anthem/releases) [![Build Status](https://img.shields.io/travis/potassco/anthem/master.svg?maxAge=3600&label=build%20%28master%29)](https://travis-ci.org/potassco/anthem?branch=master) [![Build Status](https://img.shields.io/travis/potassco/anthem/develop.svg?maxAge=3600&label=build%20%28develop%29)](https://travis-ci.org/potassco/anthem?branch=develop)
 
-> Translate answer set programs to first-order theorem prover language
+> Verify the equivalence of external behavior for two answer set programs
 
 ## Overview
 
-`anthem` translates ASP programs (in the input language of [`clingo`](https://github.com/potassco/clingo)) to the language of first-order theorem provers such as [Prover9](https://www.cs.unm.edu/~mccune/mace4/).
+`anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem`](https://github.com/potassco/anthem). 
 
 ## Usage
 
-To verify that a program implements a specification, invoke `anthem` using the `verify-program` command:
+First clone the repository and cd into the resulting directory.
+
+To verify that two programs are equivalent under a user guide: 
 
 ```sh
-$ anthem verify-program <program file> <specification file>...
+$ python3 anthem-p2p <program file> <program file> <user guide file>
 ```
 
-Note that multiple specification files may be specified.
-This is useful for separating lemmas and axioms from the assumptions and specs.
+This will produce four files: two .lp files containing `anthem-p2p` compliant versions of the programs, a text file containing the completed definitions of predicates occurring in the first program, and a specification file against which the second program is verified. 
 
-The example for computing the floor of the square root of a number can be reproduced as follows:
+For example, consider an unsafe version of a prime number program:
 
 ```sh
-$ anthem verify-program examples/example-2.{lp,spec,lemmas}
+$ composite(I*J) :- I > 1, J > 1.
+$ prime(I) :- I = a..b, not composite(I).
+$ \#show prime/1.
 ```
 
 The braces notation is a Bash shorthand for
