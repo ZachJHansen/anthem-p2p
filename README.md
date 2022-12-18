@@ -64,7 +64,7 @@ Run the preceding example as follows:
 $ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug
 ```
 
-In this particular example, the theorem-proving backend of `anthem` (`vampire`) is unable to verify the equivalence of primes_int.2.lp with the resulting primes_int-final.spec within the default time limit (5 minutes).
+In this particular example, the theorem-proving backend of `anthem` ([`vampire`](https://vprover.github.io/)) is unable to verify the equivalence of primes_int.2.lp with the resulting primes_int-final.spec within the default time limit (5 minutes).
 The proof search can be accelerated by providing helper lemmas (primes.help.spec):
 
 ```sh
