@@ -6,9 +6,25 @@
 
 `anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem`](https://github.com/potassco/anthem). 
 
-## Usage
 
-First clone the repository and cd into the resulting directory.
+## Building
+
+```sh
+$ git clone https://github.dev/ZachJHansen/anthem-p2p
+```
+
+`anthem-p2p` cannot be executed without `anthem`, which is built with Rust’s `cargo` toolchain.
+After [installing Rust](https://rustup.rs/), build `anthem` and transfer the executable to your anthem-p2p directory:
+
+```sh
+$ git clone https://github.com/potassco/anthem.git
+$ cd anthem
+$ cargo build --release
+$ cp target/release/anthem <path to anthem-p2p/>
+$ cd <path to anthem-p2p/>
+```
+
+## Usage
 
 To verify that two programs are equivalent under a user guide: 
 
@@ -62,8 +78,6 @@ Execute `anthem-p2p` with helper lemmas:
 ```sh
 $ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug primes.help.spec
 ```
-
-Currently `anthem-p2p` comes with an executable version of `anthem` and `vampire` included within the repository.
 
 ## Contributors
 
