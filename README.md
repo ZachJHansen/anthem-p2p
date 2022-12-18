@@ -53,8 +53,8 @@ The proof search can be accelerated by providing helper lemmas (primes.help.spec
 
 ```sh
 $ lemma: forall X (prime(X) <- exists N1 (exists N2, N3 (N2 = a and N3 = b and N2 <= N1 and N1 <= N3) and not composite_1(N1) and X = N1)).
-$lemma: forall X (prime(X) -> exists N1 (exists N2, N3 (N2 = a and N3 = b and N2 <= N1 and N1 <= N3) and not composite_1(N1) and X = N1)).
-$lemma: forall X, N1, N2 ( (N1 > 1 and N2 > 1 and X = N1 * N2) -> (N1 <= X and N2 <= X) ).
+$ lemma: forall X (prime(X) -> exists N1 (exists N2, N3 (N2 = a and N3 = b and N2 <= N1 and N1 <= N3) and not composite_1(N1) and X = N1)).
+$ lemma: forall X, N1, N2 ( (N1 > 1 and N2 > 1 and X = N1 * N2) -> (N1 <= X and N2 <= X) ).
 ```
 
 Execute `anthem-p2p` with helper lemmas:
