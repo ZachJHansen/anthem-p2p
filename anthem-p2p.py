@@ -27,6 +27,8 @@
 #   b. Eventually, variable names will be overwritten automatically to X,Y,Z (I,J,K) variants
 #
 # ACTIVE BUGS
+#   1. Comments
+#   2. Regex confuses q/1 with q/2 (need to incorporate arity in predicate renaming replacements)
 #
 # FEATURES TO CHECK
 #   1. Processing integrity constraints in orig.lp
@@ -145,12 +147,9 @@ def renamed(preds, addendum=1):
     print("\t", mapping)
     return mapping
 
-# Find all predicate symbols p/n occurring in the program at filepath
-def get_preds_prog(filepath):
+# Find all predicate symbols p/n occurring in the list of strings
+def get_preds_prog(raw, fp):
     predicates = []
-    f = open(filepath, "r")
-    raw = f.readlines()
-    f.close()
     for line in raw:
         line = re.sub(":-", ",", line)                      # Remove rule operators, newlines, and periods
         line = line.strip(".\n")
@@ -174,7 +173,7 @@ def get_preds_prog(filepath):
                     else:                                   # Propositional atom
                         predicates.append(a + "/0")
     preds = set(predicates)
-    print("\nFound the following predicates in file: " + filepath + ":")
+    print("\nFound the following predicates in file: " + fp + ":")
     print("\t", preds)
     return preds
 
@@ -182,13 +181,20 @@ def get_preds_prog(filepath):
 # Replace all occurrences of the predicate symbol with its new name in the text string and return it
 def replace_predicate(mapping, pred, spec):
     pname = pred.split("/")[0]                                      # Extract p from p/n
-    arity = pred.split("/")[1]                                      # Extract n from p/n
+    arity = int(pred.split("/")[1])                                 # Extract n from p/n
     new_name = mapping[pred].split("/")[0]                          # Extract p_1 from p_1/n
-    if int(arity) > 0:
-        base_exp = r'\W' + pname + r'\(|^' + pname + r'\('           # Match non-word strings followed by pname(, or pname(
+    if arity > 0:
+        start = '^' + pname + '\([^\)]+'
+        non_word_start = '\W' + pname + '\([^\)]+'
+        for _ in range(arity-1):
+            start += ',[^\)]+'
+            non_word_start += ',[^\)]+'
+        start += '\)'
+        non_word_start += '\)'
+        pattern = start + '|' + non_word_start
+        base_exp = re.compile(pattern)                              # Match pname(...)
     else:
-        base_exp = r'\W' + pname + r'\W|^' + pname + r'\W'                     # Match 1 non-word char or string start followed by pname
-    base_exp = re.compile(base_exp)
+        base_exp = r'\W' + pname + r'\W|^' + pname + r'\W'          # Match pname
     occs = re.findall(base_exp, spec)                               # Find matching substrings
     renamed = [re.sub(pname, new_name, o) for o in occs]            # Replace the predicate name within each matched substring
     replace_map = dict(zip(occs, renamed))
@@ -288,36 +294,37 @@ def verify(lp_path, spec_path):
         sys.exit(1)
     print(anthem_output.stdout)
 
-# Removes #show statements from input programs
+# Removes #show statements and comments from input programs
 # Renames private predicates from fp (any predicate not occurring in publics)
 # Returns a mapping from every private predicate to its renamed version
 # Returns a list of public predicates occurring in fp
 def preprocess(fp, ug_publics, file_type):
-    lp_publics = []
+    outp = []                                                           # Assemble list of anthem-compliant lines
+    comm_exp = r'%.*$'
+    show_exp = r'^#show.*$'
+    var_exp = r'\b[A-Z]{1}[\w\']*\b'
+    with open(fp, "r") as f:
+        raw = f.readlines()
+        for line in raw:
+            if re.search(show_exp, line) is None:
+                line = re.sub(comm_exp, '', line)
+                if line and not re.search(r'^\s*$', line):
+                    outp.append(line)
+    f.close()
+    lp_publics = []                                                     # Rename private predicates
     lp_privates = []
-    all_preds = get_preds_prog(fp)
+    all_preds = get_preds_prog(outp, fp)
     for pred in all_preds:
         if pred in ug_publics:
             lp_publics.append(pred)
         else:
             lp_privates.append(pred)
     mapping = renamed(lp_privates, file_type)
-    outp = []
-    show_exp = r'^#show.*$'
-    var_exp = r'\b[A-Z]{1}[\w\']*\b'
-    with open(fp, "r") as f:
-        raw = f.readlines()
-        for line in raw:
-            #variables = set(re.findall(var_exp, line))
-            #for v in variables:
-            #    if not v[0] in "XYZIJKLMN":
-            #        line = re.sub(v, "X"+v, line)
-            if re.search(show_exp, line) is None:
-                for pred in lp_privates:
-                    line = replace_predicate(mapping, pred, line)
-                outp.append(line)
-    f.close()
-    newfp = "new-"+fp
+    for i, line in enumerate(outp):
+        for pred in lp_privates:
+            line = replace_predicate(mapping, pred, line)
+        outp[i] = line
+    newfp = "new-"+fp                                                   # Write to new file
     with open(newfp, "w") as f:
         f.writelines(outp)
     f.close()
