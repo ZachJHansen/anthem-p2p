@@ -194,7 +194,8 @@ def replace_predicate(mapping, pred, spec):
         pattern = start + '|' + non_word_start
         base_exp = re.compile(pattern)                              # Match pname(...)
     else:
-        base_exp = r'\W' + pname + r'\W|^' + pname + r'\W'          # Match pname
+        pattern = r'\W' + pname + r'\W|^' + pname + r'\W'           # Match pname
+        base_exp = re.compile(pattern) 
     occs = re.findall(base_exp, spec)                               # Find matching substrings
     renamed = [re.sub(pname, new_name, o) for o in occs]            # Replace the predicate name within each matched substring
     replace_map = dict(zip(occs, renamed))
