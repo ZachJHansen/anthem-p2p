@@ -1,3 +1,0 @@
-input: n -> integer.
-assume: n > 1.
-output: prime/1.

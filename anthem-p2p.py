@@ -126,7 +126,7 @@ def generate_completion(file_path, inputs):
     name = name.replace(".spec", ".txt")
     exp = r'completed definition of.+\n|integrity constraint:.+'
     completions = re.findall(exp, anthem_output.stdout)
-    store_completion(completions, name)
+    #store_completion(completions, name)
     sproc.call("rm " + empty_spec, shell=True)
     # Pass completed definitions back to main
     return completions
@@ -144,7 +144,7 @@ def renamed(preds, addendum=1):
         print("\nRenaming predicates from the original program...")
     else:
         print("\nRenaming predicates from the alt program...")
-    print("\t", mapping)
+    print("\t", mapping, "\n")
     return mapping
 
 # Find all predicate symbols p/n occurring in the list of strings
@@ -199,9 +199,9 @@ def replace_predicate(mapping, pred, spec):
     occs = re.findall(base_exp, spec)                               # Find matching substrings
     renamed = [re.sub(pname, new_name, o) for o in occs]            # Replace the predicate name within each matched substring
     replace_map = dict(zip(occs, renamed))
-    for key in replace_map.keys():
-        print("\tReplacing expression", key, "with expression", replace_map[key])
-    print("")
+    #for key in replace_map.keys():
+    #    print("\tReplacing expression", key, "with expression", replace_map[key])
+    #print("")
 
     matchbox = [m for m in base_exp.finditer(spec)]
     if len(matchbox) > 0:
@@ -233,18 +233,44 @@ def terminator(spec):
         spec = spec + ".\n"
         return spec
 
+def add_completion(comp, line, renamed_privates, publics, spec_string):
+    predicate = comp.group(1)
+    if predicate in renamed_privates:
+        print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
+        spec = "assume: " + comp.group(2)
+        spec_string += terminator(spec)
+        inp = "input: " + predicate
+        spec_string += terminator(inp)
+    elif predicate in publics:
+        print("\tCompleted definition of public predicate", predicate, "is being added as a spec to the final specification.")
+        spec = "spec: " + comp.group(2)
+        spec_string += terminator(spec)
+    else:
+        # maybe an error (condition 3 of refactoring draft)
+        print("Unknown predicate: ", predicate)
+    return spec_string
+
+
+def add_constraint(cons, line, spec_string):
+    print("\tConstraint", cons.group(1), "is being added as a spec to the final specification.")
+    spec = "spec: " + cons.group(1)
+    spec_string += terminator(spec)
+    return spec_string
+
 # Input: A list of completed definitions from original.lp
 # Input: The file path pointing to the user guide
 # Input: A list of private predicates occurring in original.lp
 # Input: A list of public predicates occurring in original.lp
 # Input: A string of helper lemmas
 # Output: The file path pointing to the resulting spec
-def generate_spec(completions, context_path, privates, publics, aux):
+def generate_spec(completions, context_path, publics, privates, mapping, aux):
     # Final spec should combine the completed definitions from the text file at completion_path with the context at context_path
     # Don't change the original context, just create a new, extended version
+    # Use the renamed private predicates 
     final_spec = re.sub(".ug", "-final.spec", context_path)
     spec_gen_output = sproc.run("cp " + context_path + " " + final_spec, shell=True)
     sproc.run("chmod oug+rw " + final_spec, shell=True)
+    renamed_privates = [mapping[p] for p in privates]
 
     # First add all lemmas and axioms from aux
     spec_string = "\n"
@@ -255,31 +281,30 @@ def generate_spec(completions, context_path, privates, publics, aux):
     # Second add all completions as either assumptions or specs, and all integrity constraints as specs
     # First occurence of forall OR a word followed by iff starts completed definition
     # First occurence of forall OR a not starts an integrity constraint
-    comp_exp = r'definition of +(.+): *(forall.*$)|definition of +(.+): *(\w ?<->.+$)'
-    cons_exp = r'constraint.+(forall.*$)|constraint.+.*: ?(not.+$)'
+    fo_comp_exp = r'definition of +(.+): *(forall.*$)'
+    prop_comp_exp = r'definition of +(.+): *(\w+ ?<->.+$)'
+    fo_cons_exp = r'constraint.+(forall.*$)'
+    prop_cons_exp = r'constraint.+.*: ?(not.+$)'
+    print("\nConstructing final specification...")
     for line in completions:
-        comp = re.search(comp_exp, line)
-        cons = re.search(cons_exp, line)
-        if comp:
-            predicate = comp.group(1)
-            if predicate in privates:
-                spec = "assume: " + comp.group(2)
-                spec_string += terminator(spec)
-                inp = "input: " + predicate
-                spec_string += terminator(inp)
-            elif predicate in publics:
-                spec = "spec: " + comp.group(2)
-                spec_string += terminator(spec)
-            else:
-                print("Unknown predicate: ", predicate)
-        elif cons:
-            spec = "spec: " + cons.group(1)
-            spec_string += terminator(spec)
+        fo_comp = re.search(fo_comp_exp, line)
+        prop_comp = re.search(prop_comp_exp, line)
+        fo_cons = re.search(fo_cons_exp, line)
+        prop_cons = re.search(prop_cons_exp, line)
+        if fo_comp:
+            spec_string = add_completion(fo_comp, line, renamed_privates, publics, spec_string)
+        elif prop_comp:
+            spec_string = add_completion(prop_comp, line, renamed_privates, publics, spec_string)
+        elif fo_cons:
+            spec_string = add_constraint(fo_cons, line, spec_string)
+        elif prop_cons:
+            spec_string = add_constraint(prop_cons, line, spec_string)
         else:
             print("Parsing error: couldn't find a completed definition or an integrity constraint in:")
             print(line)
             sys.exit(1)
 
+    print("")
     with open(final_spec, "a") as f2:
         f2.write(spec_string)
     f2.close()
@@ -325,11 +350,18 @@ def preprocess(fp, ug_publics, file_type):
         for pred in lp_privates:
             line = replace_predicate(mapping, pred, line)
         outp[i] = line
-    newfp = "new-"+fp                                                   # Write to new file
+    path = "/".join(fp.split("/")[0:-1])
+    if path is not None:
+        newfp = path + "/new-" + fp.split("/")[-1]                                                   # Write to new file
+    else:
+        newfp = "new-" + fp
+    print("An Anthem-compliant version of " + fp + " is being written at " + newfp)
+    print("\twith private predicates", lp_privates, "renamed as", mapping)
+    print("\tand public predicates", lp_publics)
     with open(newfp, "w") as f:
         f.writelines(outp)
     f.close()
-    return lp_privates, lp_publics
+    return lp_privates, lp_publics, mapping, newfp
 
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
 # are considered public predicates. Input publics are used to 
@@ -371,14 +403,14 @@ if __name__ == "__main__":
     files, aux = parse_cmd()
     inputs, outputs = get_ug_preds(files["ctx"])
     public_preds = list(set(inputs + outputs))
-    orig_privates, orig_publics = preprocess(files["orig"], public_preds, 1)
-    alt_privates, alt_publics = preprocess(files["alt"], public_preds, 2)
-    files["orig"] = "new-"+files["orig"]
-    files["alt"] = "new-"+files["alt"]
+    orig_privates, orig_publics, orig_map, ofp = preprocess(files["orig"], public_preds, 1)
+    alt_privates, alt_publics, alt_map, afp = preprocess(files["alt"], public_preds, 2)
+    files["orig"] = ofp
+    files["alt"] = afp
     completions = generate_completion(files["orig"], inputs)
     if files["ctx"]:
-        final_spec = generate_spec(completions, files["ctx"], orig_publics, orig_privates, aux) 
+        final_spec = generate_spec(completions, files["ctx"], orig_publics, orig_privates, orig_map, aux) 
     else:
         sproc.call("touch .spec", shell=True)
-        final_spec = generate_spec(completions, ".spec", orig_publics, orig_privates, aux) 
+        final_spec = generate_spec(completions, ".spec", orig_publics, orig_privates, orig_map, aux) 
     verify(files["alt"], final_spec)

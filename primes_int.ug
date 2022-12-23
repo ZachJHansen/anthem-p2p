@@ -1,3 +1,0 @@
-input: a -> integer, b -> integer.
-assume: a > 1 and b >= a.
-output: prime/1.
