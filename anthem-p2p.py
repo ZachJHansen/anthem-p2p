@@ -1,45 +1,11 @@
-# ANTHEM-P2P
-# Zach Hansen
-# 12/07/22
-#
-# This script automates the process of confirming the equivalence of 
-# two ASP programs using ANTHEM.
-# 
-# Given an original file (the first user-provided .lp), an alternative file (the second .lp), and a context file (the .ug file), ANTHEM-P2P:
-# 1. Computes the completion of original.lp and prints to file original.txt
-#   a. Private predicates (p) are renamed (p_1) to avoid conflicts with private predicates in alternative.lp
-# 2. Produces a new specification file by combining context.ug and original.txt (completion.spec)
-#   a. Completed definitions of public predicates from original.lp are treated as specs
-#   b. Completed definitions of private predicates from original.lp are treated as assumptions
-#   c. Every private predicate is added as an input predicate to the final spec
-# 3. Verifies that alternative.lp implements completion.spec
-#   a. All private predicates (q) in alternative.lp are renamed (q_2)
-#
-# Additional Information:
-# 1. Running ANTHEM-P2P once constitutes a proof in BOTH directions:
-#   a. Vampire verifies the formula UG + COMP[P1] <-> COMP[P2]
-# 2. If a predicate symbol occurs in context.ug, it is a public predicate
-#   a. All other predicate symbols (from either program) are private predicates
-# 3. If you wish to provide lemmas or axioms to assist Vampire, their file names should be listed after the main 3 arguments
-#   a. If you wish to provide these auxiliary files, a .ug must be provided as well
-# 4. Some CLINGO constructs are not supported by ANTHEM-P2P
-#   a. Any programs provided as arguments will have their #show statements removed
-#   b. Eventually, variable names will be overwritten automatically to X,Y,Z (I,J,K) variants
-#
-# ACTIVE BUGS
-#   1. Comments
-#   2. Regex confuses q/1 with q/2 (need to incorporate arity in predicate renaming replacements)
-#
-# FEATURES TO CHECK
-#   1. Processing integrity constraints in orig.lp
-#   2. Substring confusion - more_than_three, three
-#   3. Processing programs with #show statements
-#   4. Use input statements from the UG instead of an empty spec when generating completions
-#   5. Variable names must start with X,Y,Z (I,J,K)
-
-import sys, re
+import json
 import subprocess as sproc
+from program import *
 
+global_summary = {"assumptions": [], "specs": []}
+
+# Parse the optional spec file, return
+# a string containing helper lemmas
 def parse_lemmas(args):
     aux = []
     spec_exp = r'.*.spec'
@@ -55,6 +21,7 @@ def parse_lemmas(args):
             sys.exit(1)
     return aux
 
+# Identify lp, ug and spec files from command line input
 def parse_cmd():
     files = {}
     lp_exp = r'.*.lp$'
@@ -94,275 +61,6 @@ def parse_cmd():
     print("")
     return files, aux
 
-# Process the Anthem output and save the completed definitions to a text file
-def store_completion(completions, file_path):
-    with open(file_path, "w") as f:
-        for c in completions:
-            f.write(c)
-            if c[-1] != "\n":
-                f.write("\n")
-    sproc.run("chmod 666 " + file_path, shell=True)
-
-# Run Anthem (forward direction) on the lp at file_path against a specification containing the input statements
-def generate_completion(file_path, inputs):
-    # Create a temporary specification file
-    name = file_path.split("/")[-1].strip()
-    name = name.replace(".lp", "-completion.spec")
-    empty_spec = "temp-" + name
-    spec_gen_output = sproc.run("touch " + empty_spec, shell=True)
-    if inputs is not None:
-        with open(empty_spec, "w") as f:
-            for pred in inputs:
-                f.write("input: " + pred + ".\n")
-        f.close()
-    # Run Anthem
-    try:
-        anthem_output = sproc.run("./anthem verify-program --proof-direction=forward " + file_path + " " + empty_spec, encoding='utf-8', stdout=sproc.PIPE, shell=True)
-        anthem_output.check_returncode()
-    except sproc.CalledProcessError:
-        print("Error running anthem: ", anthem_output.stderr)
-        sys.exit(1)
-    # Store the completed definitions in a text file for easy reading
-    name = name.replace(".spec", ".txt")
-    exp = r'completed definition of.+\n|integrity constraint:.+'
-    completions = re.findall(exp, anthem_output.stdout)
-    #store_completion(completions, name)
-    sproc.call("rm " + empty_spec, shell=True)
-    # Pass completed definitions back to main
-    return completions
-
-# Returns: a mapping from original predicate names to their new names
-def renamed(preds, addendum=1):
-    renames = []
-    for pn in preds:
-        p = pn.split("/")[0]
-        n = pn.split("/")[1]
-        new_p = p + "_" + str(addendum) + "/" + n
-        renames.append(new_p)
-    mapping = dict(zip(preds, renames))
-    if addendum == 1:
-        print("\nRenaming predicates from the original program...")
-    else:
-        print("\nRenaming predicates from the alt program...")
-    print("\t", mapping, "\n")
-    return mapping
-
-# Find all predicate symbols p/n occurring in the list of strings
-def get_preds_prog(raw, fp):
-    predicates = []
-    for line in raw:
-        line = re.sub(":-", ",", line)                      # Remove rule operators, newlines, and periods
-        line = line.strip(".\n")
-        line = re.sub(r'\+|\-|\*|\\|\/', "", line)          # Remove arithmetics (e.g. t+1 should be treated as a single term)
-        line = re.sub(r'\w+\.\.\w+', "INTERVAL", line)      # Remove intervals
-        tup_match = re.findall('\([^\)]+\)', line)          # Replace commas within argument lists with @ special character
-        replacements = [re.sub(",", "@", m) for m in tup_match]
-        for i, m in enumerate(tup_match):
-            line = line.replace(m, replacements[i], 1)
-        literals = line.split(",")                          # Split a rule into its literals, remove arithmetic literals (comparisons)
-        atomic_literals = [l for l in literals if re.search("<|>|<=|>=|=|!=", l) is None]
-        for literal in atomic_literals:
-            atom_candidates = re.findall(r'\w+\([^\)]+\)|[a-z]+[a-z\d_]*', literal)
-            if len(atom_candidates) > 0:
-                atoms = [a for a in atom_candidates if not a == 'not']
-                for a in atoms:
-                    if "(" in a:                            # First-order atom
-                        pname = a.split("(")[0]
-                        arity = len(re.findall("@", a)) + 1
-                        predicates.append(pname + "/" + str(arity))
-                    else:                                   # Propositional atom
-                        predicates.append(a + "/0")
-    preds = set(predicates)
-    print("\nFound the following predicates in file: " + fp + ":")
-    print("\t", preds)
-    return preds
-
-# Given a mapping from predicate names to new names, a predicate symbol, and a text string
-# Replace all occurrences of the predicate symbol with its new name in the text string and return it
-def replace_predicate(mapping, pred, spec):
-    pname = pred.split("/")[0]                                      # Extract p from p/n
-    arity = int(pred.split("/")[1])                                 # Extract n from p/n
-    new_name = mapping[pred].split("/")[0]                          # Extract p_1 from p_1/n
-    if arity > 0:
-        start = '^' + pname + '\([^\)]+'
-        non_word_start = '\W' + pname + '\([^\)]+'
-        for _ in range(arity-1):
-            start += ',[^\)]+'
-            non_word_start += ',[^\)]+'
-        start += '\)'
-        non_word_start += '\)'
-        pattern = start + '|' + non_word_start
-        base_exp = re.compile(pattern)                              # Match pname(...)
-    else:
-        pattern = r'\W' + pname + r'\W|^' + pname + r'\W'           # Match pname
-        base_exp = re.compile(pattern) 
-    occs = re.findall(base_exp, spec)                               # Find matching substrings
-    renamed = [re.sub(pname, new_name, o) for o in occs]            # Replace the predicate name within each matched substring
-    replace_map = dict(zip(occs, renamed))
-    #for key in replace_map.keys():
-    #    print("\tReplacing expression", key, "with expression", replace_map[key])
-    #print("")
-
-    matchbox = [m for m in base_exp.finditer(spec)]
-    if len(matchbox) > 0:
-        new_spec = spec[0:matchbox[0].span()[0]]                        # Add the string up to the first match
-        for i, m in enumerate(matchbox):
-            new_spec += renamed[i]                                      # Add the match with the new name subbed in
-            if i+1 < len(matchbox):
-                nxt = matchbox[i+1]
-                new_spec += spec[m.span()[1]:nxt.span()[0]]             # Add the string up to the next match
-        last = matchbox[-1].span()[1]
-        if last < len(spec):                                            # Add any remaining string after the matches
-            new_spec += spec[last: len(spec)]
-    else:                                                               # If no matches, return the original line
-        new_spec = spec
-    return new_spec
-
-
-def terminator(spec):
-    if spec[-1] == "\n":
-        if spec[-2] != ".":
-            spec = spec.replace("\n", ".\n")
-            return spec
-        else:
-            return spec
-    elif spec[-1] == ".":
-        spec = spec + "\n"
-        return spec
-    else:
-        spec = spec + ".\n"
-        return spec
-
-def add_completion(comp, line, renamed_privates, publics, spec_string):
-    predicate = comp.group(1)
-    if predicate in renamed_privates:
-        print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
-        spec = "assume: " + comp.group(2)
-        spec_string += terminator(spec)
-        inp = "input: " + predicate
-        spec_string += terminator(inp)
-    elif predicate in publics:
-        print("\tCompleted definition of public predicate", predicate, "is being added as a spec to the final specification.")
-        spec = "spec: " + comp.group(2)
-        spec_string += terminator(spec)
-    else:
-        # maybe an error (condition 3 of refactoring draft)
-        print("Unknown predicate: ", predicate)
-    return spec_string
-
-
-def add_constraint(cons, line, spec_string):
-    print("\tConstraint", cons.group(1), "is being added as a spec to the final specification.")
-    spec = "spec: " + cons.group(1)
-    spec_string += terminator(spec)
-    return spec_string
-
-# Input: A list of completed definitions from original.lp
-# Input: The file path pointing to the user guide
-# Input: A list of private predicates occurring in original.lp
-# Input: A list of public predicates occurring in original.lp
-# Input: A string of helper lemmas
-# Output: The file path pointing to the resulting spec
-def generate_spec(completions, context_path, publics, privates, mapping, aux):
-    # Final spec should combine the completed definitions from the text file at completion_path with the context at context_path
-    # Don't change the original context, just create a new, extended version
-    # Use the renamed private predicates 
-    final_spec = re.sub(".ug", "-final.spec", context_path)
-    spec_gen_output = sproc.run("cp " + context_path + " " + final_spec, shell=True)
-    sproc.run("chmod oug+rw " + final_spec, shell=True)
-    renamed_privates = [mapping[p] for p in privates]
-
-    # First add all lemmas and axioms from aux
-    spec_string = "\n"
-    if aux is not None:
-        for line in aux:
-            spec_string += "\n" + line
-
-    # Second add all completions as either assumptions or specs, and all integrity constraints as specs
-    # First occurence of forall OR a word followed by iff starts completed definition
-    # First occurence of forall OR a not starts an integrity constraint
-    fo_comp_exp = r'definition of +(.+): *(forall.*$)'
-    prop_comp_exp = r'definition of +(.+): *(\w+ ?<->.+$)'
-    fo_cons_exp = r'constraint.+(forall.*$)'
-    prop_cons_exp = r'constraint.+.*: ?(not.+$)'
-    print("\nConstructing final specification...")
-    for line in completions:
-        fo_comp = re.search(fo_comp_exp, line)
-        prop_comp = re.search(prop_comp_exp, line)
-        fo_cons = re.search(fo_cons_exp, line)
-        prop_cons = re.search(prop_cons_exp, line)
-        if fo_comp:
-            spec_string = add_completion(fo_comp, line, renamed_privates, publics, spec_string)
-        elif prop_comp:
-            spec_string = add_completion(prop_comp, line, renamed_privates, publics, spec_string)
-        elif fo_cons:
-            spec_string = add_constraint(fo_cons, line, spec_string)
-        elif prop_cons:
-            spec_string = add_constraint(prop_cons, line, spec_string)
-        else:
-            print("Parsing error: couldn't find a completed definition or an integrity constraint in:")
-            print(line)
-            sys.exit(1)
-
-    print("")
-    with open(final_spec, "a") as f2:
-        f2.write(spec_string)
-    f2.close()
-    return final_spec
-
-# Verify lp against spec
-def verify(lp_path, spec_path):
-    try:
-        anthem_output = sproc.run("./anthem verify-program " + lp_path + " " + spec_path, encoding='utf-8', stdout=sproc.PIPE, shell=True)
-        anthem_output.check_returncode()
-    except sproc.CalledProcessError:
-        print("Error running anthem: ", anthem_output.stderr)
-        sys.exit(1)
-    print(anthem_output.stdout)
-
-# Removes #show statements and comments from input programs
-# Renames private predicates from fp (any predicate not occurring in publics)
-# Returns a mapping from every private predicate to its renamed version
-# Returns a list of public predicates occurring in fp
-def preprocess(fp, ug_publics, file_type):
-    outp = []                                                           # Assemble list of anthem-compliant lines
-    comm_exp = r'%.*$'
-    show_exp = r'^#show.*$'
-    var_exp = r'\b[A-Z]{1}[\w\']*\b'
-    with open(fp, "r") as f:
-        raw = f.readlines()
-        for line in raw:
-            if re.search(show_exp, line) is None:
-                line = re.sub(comm_exp, '', line)
-                if line and not re.search(r'^\s*$', line):
-                    outp.append(line)
-    f.close()
-    lp_publics = []                                                     # Rename private predicates
-    lp_privates = []
-    all_preds = get_preds_prog(outp, fp)
-    for pred in all_preds:
-        if pred in ug_publics:
-            lp_publics.append(pred)
-        else:
-            lp_privates.append(pred)
-    mapping = renamed(lp_privates, file_type)
-    for i, line in enumerate(outp):
-        for pred in lp_privates:
-            line = replace_predicate(mapping, pred, line)
-        outp[i] = line
-    path = "/".join(fp.split("/")[0:-1])
-    if path is not None:
-        newfp = path + "/new-" + fp.split("/")[-1]                                                   # Write to new file
-    else:
-        newfp = "new-" + fp
-    print("An Anthem-compliant version of " + fp + " is being written at " + newfp)
-    print("\twith private predicates", lp_privates, "renamed as", mapping)
-    print("\tand public predicates", lp_publics)
-    with open(newfp, "w") as f:
-        f.writelines(outp)
-    f.close()
-    return lp_privates, lp_publics, mapping, newfp
-
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
 # are considered public predicates. Input publics are used to 
 # construct an initial specification during completion generation
@@ -398,19 +96,180 @@ def get_ug_preds(fp):
         print("Fatal error")
         sys.exit(1)
 
+# Create a Program instance, rename private predicates
+# within it, remove directives and comments, write the
+# resulting program to a new file
+def preprocess(fp, name, addendum, publics):
+    with open(fp, "r") as f:
+        program = Program(name, f.readlines())
+    f.close()
+    program.rename_predicates(publics, addendum)
+    path = "/".join(fp.split("/")[0:-1])
+    if len(path) != 0:
+        newfp = path + "/new-" + fp.split("/")[-1]                                                   # Write to new file
+    else:
+        newfp = "new-" + fp
+    program.print_program(newfp)
+    return newfp, program
+
+# Run Anthem (forward direction) on the lp at fp against a 
+# specification containing the input statements from the user guide
+def generate_completion(fp, inputs, simplify=True):
+    # Create a temporary specification file
+    name = fp.split("/")[-1].strip()
+    name = name.replace(".lp", "-completion.spec")
+    empty_spec = "temp-" + name
+    spec_gen_output = sproc.run("touch " + empty_spec, shell=True)
+    if inputs is not None:
+        with open(empty_spec, "w") as f:
+            for pred in inputs:
+                f.write("input: " + pred + ".\n")
+        f.close()
+    # Run Anthem
+    if simplify:
+        command = "./anthem verify-program --proof-direction=forward " + fp + " " + empty_spec
+    else:
+        command = "./anthem verify-program --proof-direction=forward --no-simplify " + fp + " " + empty_spec
+    try:
+        anthem_output = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)
+        anthem_output.check_returncode()
+    except sproc.CalledProcessError:
+        print("Error running anthem: ", anthem_output.stderr)
+        sys.exit(1)
+    exp = r'completed definition of.+\n|integrity constraint:.+'
+    completions = re.findall(exp, anthem_output.stdout)
+    sproc.call("rm " + empty_spec, shell=True)
+    # Pass completed definitions back to main
+    return completions
+
+def add_completion(comp, renamed_privates, publics, spec_string):
+    predicate = comp.group(1)
+    if predicate in renamed_privates:
+        print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
+        global_summary["assumptions"].append(predicate) 
+        spec = "assume: " + comp.group(2)
+        spec_string += terminator(spec)
+        inp = "input: " + predicate
+        spec_string += terminator(inp)
+    elif predicate in publics:
+        print("\tCompleted definition of public predicate", predicate, "is being added as a spec to the final specification.")
+        global_summary["specs"].append(predicate) 
+        spec = "spec: " + comp.group(2)
+        spec_string += terminator(spec)
+    else:
+        # maybe an error (condition 3 of refactoring draft)
+        print("Unknown predicate: ", predicate)
+    return spec_string
+
+def terminator(spec):
+    if spec[-1] == "\n":
+        if spec[-2] != ".":
+            spec = spec.replace("\n", ".\n")
+            return spec
+        else:
+            return spec
+    elif spec[-1] == ".":
+        spec = spec + "\n"
+        return spec
+    else:
+        spec = spec + ".\n"
+        return spec
+
+def add_constraint(cons, spec_string):
+    print("\tConstraint", cons.group(1), "is being added as a spec to the final specification.")
+    spec = "spec: " + cons.group(1)
+    spec_string += terminator(spec)
+    return spec_string
+
+def generate_spec(completions, context_path, orig, aux):
+    # Final spec should combine the completed definitions with the context at context_path
+    # Don't change the original context (user guide), just create a new, extended version
+    # Use the renamed private predicates 
+    final_spec = re.sub(".ug", "-final.spec", context_path)
+    spec_gen_output = sproc.run("cp " + context_path + " " + final_spec, shell=True)
+    sproc.run("chmod oug+rw " + final_spec, shell=True)
+    renamed_privates = []
+    for original_pred in orig.privates:
+        pname, arity = original_pred.split("/")
+        renamed_privates.append(pname + "_1/" + arity)
+
+    # First add all lemmas and axioms from aux
+    spec_string = "\n"
+    if aux is not None:
+        for line in aux:
+            spec_string += "\n" + line
+
+    # Second add all completions as either assumptions or specs, and all integrity constraints as specs
+    # First occurence of forall OR a word followed by iff starts completed definition
+    # First occurence of forall OR a not starts an integrity constraint
+    fo_comp_exp = r'definition of +(.+): *(forall.*$)'
+    prop_comp_exp = r'definition of +(.+): *(\w+ ?<->.+$)'
+    fo_cons_exp = r'constraint.+(forall.*$)'
+    prop_cons_exp = r'constraint.+.*: ?(not.+$)'
+    print("\nConstructing final specification...")
+    for line in completions:
+        fo_comp = re.search(fo_comp_exp, line)
+        prop_comp = re.search(prop_comp_exp, line)
+        fo_cons = re.search(fo_cons_exp, line)
+        prop_cons = re.search(prop_cons_exp, line)
+        if fo_comp:
+            spec_string = add_completion(fo_comp, renamed_privates, orig.publics, spec_string)
+        elif prop_comp:
+            spec_string = add_completion(prop_comp, renamed_privates, orig.publics, spec_string)
+        elif fo_cons:
+            spec_string = add_constraint(fo_cons, spec_string)
+        elif prop_cons:
+            spec_string = add_constraint(prop_cons, spec_string)
+        else:
+            print("Parsing error: couldn't find a completed definition or an integrity constraint in:")
+            print(line)
+            sys.exit(1)
+
+    print("")
+    with open(final_spec, "a") as f2:
+        f2.write(spec_string)
+    f2.close()
+    return final_spec
+
+# Verify lp against spec
+def verify(lp_path, spec_path, simplify=True):
+    if simplify:
+        command = "./anthem verify-program " + lp_path + " " + spec_path
+    else:
+        command = "./anthem verify-program --no-simplify " + lp_path + " " + spec_path
+    try:
+        anthem_output = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)
+        anthem_output.check_returncode()
+    except sproc.CalledProcessError:
+        print("Error running anthem: ", anthem_output.stderr)
+    print(anthem_output.stdout)
+    fail = r'\(not proven\)'
+    if re.search(fail, anthem_output.stdout):
+        return False
+    else:
+        return True
+
 if __name__ == "__main__":
     assert (sys.version_info >= (3, 6, 9)), "This script requires Python v3.6.9 (or later). Try python3"
     files, aux = parse_cmd()
     inputs, outputs = get_ug_preds(files["ctx"])
     public_preds = list(set(inputs + outputs))
-    orig_privates, orig_publics, orig_map, ofp = preprocess(files["orig"], public_preds, 1)
-    alt_privates, alt_publics, alt_map, afp = preprocess(files["alt"], public_preds, 2)
-    files["orig"] = ofp
-    files["alt"] = afp
-    completions = generate_completion(files["orig"], inputs)
+    files["orig"], orig = preprocess(files["orig"], "orig", 1, public_preds)
+    files["alt"], alt = preprocess(files["alt"], "alt", 2, public_preds)
+    global_summary["privates"] = list(orig.privates)
+    global_summary["publics"] = list(orig.publics)
+    completions = generate_completion(files["orig"], inputs, False)
     if files["ctx"]:
-        final_spec = generate_spec(completions, files["ctx"], orig_publics, orig_privates, orig_map, aux) 
+        final_spec = generate_spec(completions, files["ctx"], orig, aux) 
     else:
         sproc.call("touch .spec", shell=True)
-        final_spec = generate_spec(completions, ".spec", orig_publics, orig_privates, orig_map, aux) 
-    verify(files["alt"], final_spec)
+        final_spec = generate_spec(completions, ".spec", orig, aux) 
+    success = verify(files["alt"], final_spec, False)
+    if success:
+        global_summary["equiv"] = "Equivalent"
+    else:
+        #print("\n\nTrying again without simplification...\n\n")
+        global_summary["equiv"] = "Not"
+    with open(files["orig"]+"-summary.json", "w") as f:
+        json.dump(global_summary, f)
+    f.close()

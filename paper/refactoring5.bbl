@@ -1,0 +1,63 @@
+\begin{thebibliography}{}
+
+\bibitem[Fandinno and Lifschitz, 2023]{fan22}
+{\sc Fandinno, J.} {\sc and} {\sc Lifschitz, V.} 2023.
+\newblock Verification of locally tight programs.
+\newblock Submitted for publication, {\tt
+  http://www.cs.utexas.edu/users/ai-lab/pub-view.php?PubID=127938}.
+
+\bibitem[Fandinno et~al., 2020]{fan20}
+{\sc Fandinno, J.}, {\sc Lifschitz, V.}, {\sc L\"uhne, P.}, {\sc and} {\sc
+  Schaub, T.} 2020.
+\newblock Verifying tight logic programs with {A}nthem and {V}ampire.
+\newblock {\em Theory and Practice of Logic Programming}, {\it 20}.
+
+\bibitem[Fandinno et~al., 2022]{fan22a}
+{\sc Fandinno, J.}, {\sc Nansen, Z.}, {\sc and} {\sc Lierler, Y.}
+\newblock Axiomatization of aggregates in answer set programming.
+\newblock In {\em Proceedings of the AAAI Conference on Artificial
+  Intelligence} 2022.
+
+\bibitem[Gebser et~al., 2015]{geb15}
+{\sc Gebser, M.}, {\sc Harrison, A.}, {\sc Kaminski, R.}, {\sc Lifschitz, V.},
+  {\sc and} {\sc Schaub, T.} 2015.
+\newblock Abstract {G}ringo.
+\newblock {\em Theory and Practice of Logic Programming}, {\it 15}, 449--463.
+
+\bibitem[Gebser et~al., 2012]{geb12}
+{\sc Gebser, M.}, {\sc Kaminski, R.}, {\sc Kaufmann, B.}, {\sc and} {\sc
+  Schaub, T.} 2012.
+\newblock {\em Answer Set Solving in Practice}.
+\newblock Synthesis Lectures on Artificial Intelligence and Machine Learning.
+  Morgan and Claypool Publishers.
+
+\bibitem[Gelfond, 2002]{gel02}
+{\sc Gelfond, M.} 2002.
+\newblock Representing knowledge in {A}-{P}rolog.
+\newblock {\em Lecture Notes in Computer Science}, {\it 2408}, 413--451.
+
+\bibitem[Gelfond and Kahl, 2014]{gel14}
+{\sc Gelfond, M.} {\sc and} {\sc Kahl, Y.} 2014.
+\newblock {\em Knowledge Representation, Reasoning, and the Design of
+  Intelligent Agents: The Answer-Set Programming Approach}.
+\newblock Cambridge University Press.
+
+\bibitem[Kova\'cs and Voronkov, 2013]{vor13}
+{\sc Kova\'cs, L.} {\sc and} {\sc Voronkov, A.}
+\newblock First-order theorem proving and {V}ampire.
+\newblock In {\em International Conference on Computer Aided Verification}
+  2013, pp. 1--–35.
+
+\bibitem[Lifschitz, 2022]{lif22a}
+{\sc Lifschitz, V.} 2022.
+\newblock Strong equivalence of logic programs with counting.
+\newblock {\em Theory and Practice of Logic Programming}, {\it 22}.
+
+\bibitem[Oetsch and Tompits, 2008]{oet08}
+{\sc Oetsch, J.} {\sc and} {\sc Tompits, H.}
+\newblock Program correspondence under the answer-set semantics: The non-ground
+  case.
+\newblock In {\em Proceedings of International Conference on Logic Programming
+  (ICLP)} 2008.
+
+\end{thebibliography}

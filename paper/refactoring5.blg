@@ -1,0 +1,55 @@
+This is BibTeX, Version 0.99d (TeX Live 2017/Debian)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: refactoring5.aux
+The style file: tlplike.bst
+Database file #1: bib.bib
+You can't pop an empty literal stack for entry fan20
+while executing---line 1117 of file tlplike.bst
+You can't pop an empty literal stack for entry geb15
+while executing---line 1117 of file tlplike.bst
+You can't pop an empty literal stack for entry gel02
+while executing---line 1117 of file tlplike.bst
+You can't pop an empty literal stack for entry lif22a
+while executing---line 1117 of file tlplike.bst
+You've used 10 entries,
+            1983 wiz_defined-function locations,
+            532 strings with 5316 characters,
+and the built_in function-call counts, 3747 in all, are:
+= -- 352
+> -- 158
+< -- 7
++ -- 52
+- -- 52
+* -- 354
+:= -- 665
+add.period$ -- 31
+call.type$ -- 10
+change.case$ -- 74
+chr.to.int$ -- 10
+cite$ -- 10
+duplicate$ -- 146
+empty$ -- 261
+format.name$ -- 70
+if$ -- 721
+int.to.chr$ -- 1
+int.to.str$ -- 0
+missing$ -- 11
+newline$ -- 53
+num.names$ -- 30
+pop$ -- 77
+preamble$ -- 1
+purify$ -- 76
+quote$ -- 0
+skip$ -- 102
+stack$ -- 0
+substring$ -- 194
+swap$ -- 14
+text.length$ -- 1
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 56
+warning$ -- 0
+while$ -- 26
+width$ -- 0
+write$ -- 132
+(There were 4 error messages)

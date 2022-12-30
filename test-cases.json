@@ -1,0 +1,27 @@
+{
+    "orphan": {
+        "privates1": [],
+        "publics1": ["living/1", "father/2", "mother/2", "orphan/1"],
+        "assumptions1": [],
+        "specs1": ["orphan/1"],
+
+        "privates2": ["parent_living/1"],
+        "publics2": ["living/1", "father/2", "mother/2", "orphan/1"],
+        "assumptions2": ["parent_living_1/1"],
+        "specs2": ["orphan/1"],
+        "equiv": "Equivalent"
+    },
+
+    "ex2": {
+        "privates1": ["q/1"],
+        "publics1": ["p/1", "r/1"],
+        "assumptions1": ["q_1/1"],
+        "specs1": ["r/1"],
+
+        "privates2": [],
+        "publics2": ["p/1", "r/1"],
+        "assumptions2": [],
+        "specs2": ["r/1"],
+        "equiv": "Equivalent"
+    }
+}

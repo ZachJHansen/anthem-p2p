@@ -1,0 +1,1 @@
+{"assumptions": ["r_1/0"], "specs": ["q/0", "s/0"], "privates": ["r/0"], "publics": ["s/0", "p/0", "q/0"], "equiv": "Equivalent"}
