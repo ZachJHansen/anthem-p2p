@@ -1,27 +1,98 @@
 {
     "orphan": {
-        "privates1": [],
-        "publics1": ["living/1", "father/2", "mother/2", "orphan/1"],
-        "assumptions1": [],
-        "specs1": ["orphan/1"],
-
-        "privates2": ["parent_living/1"],
-        "publics2": ["living/1", "father/2", "mother/2", "orphan/1"],
-        "assumptions2": ["parent_living_1/1"],
-        "specs2": ["orphan/1"],
-        "equiv": "Equivalent"
+	    "1" : {
+        	"privates": [],
+        	"publics": ["living/1", "father/2", "mother/2", "orphan/1"],
+        	"assumptions": [],
+        	"specs": ["orphan/1"],
+		"equiv": "Equivalent"
+	    },
+	    "2" : {
+        	"privates": ["parent_living/1"],
+        	"publics": ["living/1", "father/2", "mother/2", "orphan/1"],
+        	"assumptions": ["parent_living_1/1"],
+        	"specs": ["orphan/1"],
+        	"equiv": "Equivalent"
+	    }
     },
-
+    "ex1": {
+            "1" : {
+                "privates": ["p/1"],
+                "publics": ["q/1"],
+                "assumptions": ["p_1/1"],
+                "specs": ["q/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["pp/1"],
+                "publics": ["q/1"],
+                "assumptions": ["pp_1/1"],
+                "specs": ["q/1"],
+                "equiv": "Equivalent"
+            }
+    },
     "ex2": {
-        "privates1": ["q/1"],
-        "publics1": ["p/1", "r/1"],
-        "assumptions1": ["q_1/1"],
-        "specs1": ["r/1"],
-
-        "privates2": [],
-        "publics2": ["p/1", "r/1"],
-        "assumptions2": [],
-        "specs2": ["r/1"],
-        "equiv": "Equivalent"
+	"1": {
+        	"privates": ["q/1"],
+        	"publics": ["p/1", "r/1"],
+        	"assumptions": ["q_1/1"],
+        	"specs": ["r/1"],
+		"equiv": "Equivalent"
+	},
+	"2": {
+        	"privates": [],
+        	"publics": ["p/1", "r/1"],
+        	"assumptions": [],
+        	"specs": ["r/1"],
+        	"equiv": "Equivalent"
+	}
+	},
+    "ex3": {
+            "1" : {
+                "privates": ["q/0"],
+                "publics": ["p/0", "r/0"],
+                "assumptions": ["q_1/0"],
+                "specs": ["r/0"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["q/0"],
+                "publics": ["p/0", "r/0"],
+                "assumptions": ["q_1/0"],
+                "specs": ["r/0"],
+                "equiv": "Equivalent"
+            }
+    },
+	"intervals": {
+            "1" : {
+                "privates": ["p/1", "q/1"],
+                "publics": ["r/1"],
+                "assumptions": ["p_1/1","q_1/0"],
+                "specs": ["r/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": [],
+                "publics": ["r/1"],
+                "assumptions": [],
+                "specs": ["r/1"],
+                "equiv": "Equivalent"
+            }
+    },
+    "queens": {
+            "1" : {
+                "privates": ["q/2"],
+                "publics": ["q/1"],
+                "assumptions": ["q_1/2"],
+                "specs": ["q/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["q/2"],
+                "publics": ["q/1"],
+                "assumptions": ["q_1/2"],
+                "specs": ["q/1"],
+                "equiv": "Equivalent"
+            }
     }
 }

@@ -1,3 +1,3 @@
 pp(a).
 %q(Var) :- pp(Var).
-q(T) :- pp(T).
+q(X) :- pp(X).

@@ -1,0 +1,52 @@
+
+####### Input Files (Original, Alternative, Context) #######
+{'orig': 'examples/ex2/ex2.1.lp', 'alt': 'examples/ex2/ex2.2.lp', 'ctx': 'examples/ex2/ex2.ug'}
+
+####### Input predicates from UG: #######
+['p/1']
+
+####### Output predicates from UG: #######
+['r/1']
+
+Constructing final specification...
+	Completed definition of renamed private predicate q_1/1 is being added as an input and assumption to the final specification.
+	Completed definition of public predicate r/1 is being added as a spec to the final specification.
+
+		Assumption includes r/1, which is not an input predicate (consider declaring r/1 an input predicate)
+     Started verification of specification from translated program
+ Presupposed assumption: forall X1 (q_1(X1) <-> exists X2 (exists X3 (X3 = X2 and r(X3)) and X1 = X2))
+ Presupposed completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))
+[s   Verifying spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))[u[2K    Verified spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2)) in 0.024 seconds
+    Finished verification of specification from translated program
+
+     Started verification of translated program from specification
+ Presupposed assumption: forall X1 (q_1(X1) <-> exists X2 (exists X3 (X3 = X2 and r(X3)) and X1 = X2))
+ Presupposed spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))
+[s   Verifying completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))[u[2K    Verified completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2)) in 0.019 seconds
+    Finished verification of translated program from specification
+
+
+####### Input Files (Original, Alternative, Context) #######
+{'orig': 'examples/ex2/ex2.2.lp', 'alt': 'examples/ex2/ex2.1.lp', 'ctx': 'examples/ex2/ex2.ug'}
+
+####### Input predicates from UG: #######
+['p/1']
+
+####### Output predicates from UG: #######
+['r/1']
+
+Constructing final specification...
+	Completed definition of public predicate r/1 is being added as a spec to the final specification.
+
+     Started verification of specification from translated program
+ Presupposed completed definition of q_2/1: forall X1 (q_2(X1) <-> exists X2 (exists X3 (X3 = X2 and r(X3)) and X1 = X2))
+ Presupposed completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))
+[s   Verifying spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))[u[2K    Verified spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2)) in 0.027 seconds
+    Finished verification of specification from translated program
+
+     Started verification of translated program from specification
+ Presupposed completed definition of q_2/1: forall X1 (q_2(X1) <-> exists X2 (exists X3 (X3 = X2 and r(X3)) and X1 = X2))
+ Presupposed spec: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))
+[s   Verifying completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2))[u[2K    Verified completed definition of r/1: forall X1 (r(X1) <-> exists X2 (exists X3 (X3 = X2 and p(X3)) and X1 = X2)) in 0.033 seconds
+    Finished verification of translated program from specification
+

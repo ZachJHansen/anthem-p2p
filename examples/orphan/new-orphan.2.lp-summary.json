@@ -1,0 +1,1 @@
+{"assumptions": ["parent_living_1/1"], "specs": ["orphan/1"], "privates": ["parent_living/1"], "publics": ["orphan/1", "mother/2", "father/2", "living/1"], "equiv": "Equivalent"}

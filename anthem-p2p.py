@@ -258,13 +258,13 @@ if __name__ == "__main__":
     files["alt"], alt = preprocess(files["alt"], "alt", 2, public_preds)
     global_summary["privates"] = list(orig.privates)
     global_summary["publics"] = list(orig.publics)
-    completions = generate_completion(files["orig"], inputs, False)
+    completions = generate_completion(files["orig"], inputs, True)
     if files["ctx"]:
         final_spec = generate_spec(completions, files["ctx"], orig, aux) 
     else:
         sproc.call("touch .spec", shell=True)
         final_spec = generate_spec(completions, ".spec", orig, aux) 
-    success = verify(files["alt"], final_spec, False)
+    success = verify(files["alt"], final_spec, True)
     if success:
         global_summary["equiv"] = "Equivalent"
     else:
