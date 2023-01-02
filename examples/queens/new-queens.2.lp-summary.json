@@ -1,1 +1,0 @@
-{"assumptions": ["diff_1/3", "q_1/2"], "specs": ["q/1"], "privates": ["diff/3", "q/2"], "publics": ["q/1"], "equiv": "Not"}
