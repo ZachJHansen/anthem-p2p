@@ -32,7 +32,7 @@ To verify that two programs are equivalent under a user guide:
 $ python3 anthem-p2p <program file> <program file> <user guide file>
 ```
 
-This will produce four files: two .lp files containing `anthem-p2p` compliant versions of the programs, a text file containing the completed definitions of predicates occurring in the first program, and a specification file against which the second program is verified. 
+This will produce three files: two .lp files containing `anthem-p2p` compliant versions of the logic programs, and a specification file against which the second program is verified. 
 
 For example, consider an unsafe version of a prime number program (primes_int.1.lp):
 
