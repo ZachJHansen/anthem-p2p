@@ -23,6 +23,11 @@ $ cargo build --release
 $ cp target/release/anthem <path to anthem-p2p/>
 $ cd <path to anthem-p2p/>
 ```
+Note that you will also need a working installation of `vampire.`
+Installation instructions can be found here:
+```sh
+https://vprover.github.io/
+```
 
 ## Usage
 
