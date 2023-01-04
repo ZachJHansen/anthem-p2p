@@ -73,10 +73,10 @@ $ lemma: forall X (prime(X) -> exists N1 (exists N2, N3 (N2 = a and N3 = b and N
 $ lemma: forall X, N1, N2 ( (N1 > 1 and N2 > 1 and X = N1 * N2) -> (N1 <= X and N2 <= X) ).
 ```
 
-Execute `anthem-p2p` with helper lemmas and a specified timeout in seconds for Vampire (default is 5 minutes):
+Execute `anthem-p2p` with helper lemmas and a specified timeout in seconds for Vampire:
 
 ```sh
-$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug --lemmas primes.help.spec --time-limit 120
+$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug --lemmas primes.help.spec --time-limit 600
 ```
 
 ## Contributors
