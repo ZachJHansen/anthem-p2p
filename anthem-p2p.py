@@ -1,15 +1,16 @@
-import json
+import json, argparse
 import subprocess as sproc
 from program import *
 
+verbose = False
 global_summary = {"assumptions": [], "specs": []}
 
 # Parse the optional spec file, return
 # a string containing helper lemmas
-def parse_lemmas(args):
+def parse_lemmas(fname):
     aux = []
-    spec_exp = r'.*.spec'
-    for fname in args:
+    if fname is not None:
+        spec_exp = r'.*.spec'
         if re.search(spec_exp, fname):
             f = open(fname, "r")
             lines = f.readlines()
@@ -24,42 +25,37 @@ def parse_lemmas(args):
 # Identify lp, ug and spec files from command line input
 def parse_cmd():
     files = {}
-    lp_exp = r'.*.lp$'
-    ug_exp = r'.*.ug$'
-    f1 = sys.argv[1].strip()
-    f2 = sys.argv[2].strip()
-    f3 = sys.argv[3].strip()
-    # Find first .lp, second .lp, only .ug
-    if re.search(lp_exp, f1):
-        files["orig"] = f1
-        if re.search(lp_exp, f2):
-            files["alt"] = f2
-            files["ctx"] = f3
-        else:
-            files["alt"] = f3
-            files["ctx"] = f2
-    else:
-        files["orig"] = f2
-        files["alt"] = f3
-        files["ctx"] = f1
-    # Add the contents of any remaining files as a list of lemmas and axioms
-    aux = None
-    if len(sys.argv) > 4:
-        aux = parse_lemmas(sys.argv[4:])
+    try:
+        parser = argparse.ArgumentParser("Anthem-P2P", "Verifies the equivalent external behavior of two logic programs.")
+        parser.add_argument("lp", nargs=2, help="Logic programs")
+        parser.add_argument("ug", nargs=1, help="A .ug file defining the context (user guide)")
+        parser.add_argument("-l", "--lemmas", required=False, dest="aux", help="Lemmas and axioms to accelerate proof search")
+        parser.add_argument("-t", "--time-limit", required=False, dest="time", help="Time limit for Vampire")
+        parser.add_argument("-v", "--verbose", required=False, dest="verbose", help="Extra error messages (y/n)")
+        args = parser.parse_args()
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+    files["orig"], files["alt"], files["ctx"] = args.lp[0], args.lp[1], args.ug[0]
+    aux = parse_lemmas(args.aux)
+    print(args.verbose)
+    if args.verbose == "y":
+        print("checck")
+        verbose = True
     # Sanity Check
-    if not re.search(lp_exp, files["orig"]):
+    if not re.search(r'.*.lp$', files["orig"]):
         print("Error (1) parsing program arguments: expects 2 files with .lp extension, and 1 file with a .ug extension")
         sys.exit(1)
-    if not re.search(lp_exp, files["alt"]):
+    if not re.search(r'.*.lp$', files["alt"]):
         print("Error (2) parsing program arguments: expects 2 files with .lp extension, and 1 file with a .ug extension")
         sys.exit(1)
-    if not re.search(ug_exp, files["ctx"]):
+    if not re.search(r'.*.ug$', files["ctx"]):
         print("Error (3) parsing program arguments: expects 2 files with .lp extension, and 1 file with a .ug extension")
         sys.exit(1)
     print("\n####### Input Files (Original, Alternative, Context) #######")
     print(files)
     print("")
-    return files, aux
+    return files, aux, args.time
 
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
 # are considered public predicates. Input publics are used to 
@@ -96,20 +92,39 @@ def get_ug_preds(fp):
         print("Fatal error")
         sys.exit(1)
 
+
+def syntax_check(fp):
+    try:
+        command = 'clingo ' + fp
+        clingo_check = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, stderr=sproc.PIPE, shell=True)
+        clingo_check.check_returncode()
+    except sproc.CalledProcessError as e:
+        if e.returncode == 65:
+            if re.search(r'parsing failed', clingo_check.stderr):
+                print("Syntax error in ", fp)
+                sys.exit(1)
+
 # Create a Program instance, rename private predicates
 # within it, remove directives and comments, write the
 # resulting program to a new file
-def preprocess(fp, name, addendum, publics):
-    with open(fp, "r") as f:
-        program = Program(name, f.readlines())
-    f.close()
-    program.rename_predicates(publics, addendum)
-    path = "/".join(fp.split("/")[0:-1])
-    if len(path) != 0:
-        newfp = path + "/new-" + fp.split("/")[-1]                                                   # Write to new file
-    else:
-        newfp = "new-" + fp
-    program.print_program(newfp)
+def preprocess(fp, name, addendum, inputs, outputs):
+    syntax_check(fp)
+    try:
+        with open(fp, "r") as f:
+            program = Program(name, f.readlines(), verbose)
+        f.close()
+        program.rename_predicates(inputs, outputs, addendum)
+        path = "/".join(fp.split("/")[0:-1])
+        if len(path) != 0:
+            newfp = path + "/new-" + fp.split("/")[-1]                                                   # Write to new file
+        else:
+            newfp = "new-" + fp
+        program.print_program(newfp)
+    except Exception as e:
+        print("Error preprocessing file", fp)
+        print(e)
+        sys.exit(1)
+    syntax_check(newfp)
     return newfp, program
 
 # Run Anthem (forward direction) on the lp at fp against a 
@@ -131,7 +146,7 @@ def generate_completion(fp, inputs, simplify=True):
     else:
         command = "./anthem verify-program --proof-direction=forward --no-simplify " + fp + " " + empty_spec
     try:
-        anthem_output = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)
+        anthem_output = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, stderr=sproc.PIPE, shell=True)
         anthem_output.check_returncode()
     except sproc.CalledProcessError:
         print("Error running anthem: ", anthem_output.stderr)
@@ -142,7 +157,7 @@ def generate_completion(fp, inputs, simplify=True):
     # Pass completed definitions back to main
     return completions
 
-def add_completion(comp, renamed_privates, publics, spec_string):
+def add_completion(comp, renamed_privates, program, spec_string):
     predicate = comp.group(1)
     if predicate in renamed_privates:
         print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
@@ -151,14 +166,17 @@ def add_completion(comp, renamed_privates, publics, spec_string):
         spec_string += terminator(spec)
         inp = "input: " + predicate
         spec_string += terminator(inp)
-    elif predicate in publics:
-        print("\tCompleted definition of public predicate", predicate, "is being added as a spec to the final specification.")
+    elif predicate in program.outputs:
+        print("\tCompleted definition of output predicate", predicate, "is being added as a spec to the final specification.")
         global_summary["specs"].append(predicate) 
         spec = "spec: " + comp.group(2)
         spec_string += terminator(spec)
+    elif predicate in program.inputs:
+        print("\tCompleted definition of an input predicate is illegal. Predicate:", predicate)
+        sys.exit(1)
     else:
-        # maybe an error (condition 3 of refactoring draft)
         print("Unknown predicate: ", predicate)
+        sys.exit(1)
     return spec_string
 
 def terminator(spec):
@@ -176,8 +194,12 @@ def terminator(spec):
         return spec
 
 def add_constraint(cons, spec_string):
-    print("\tConstraint", cons.group(1), "is being added as a spec to the final specification.")
-    spec = "spec: " + cons.group(1)
+    if cons.group(1) is None:
+        match = cons.group(2)
+    else:
+        match = cons.group(1)
+    print("\tConstraint", match, "is being added as a spec to the final specification.")
+    spec = "spec: " + match
     spec_string += terminator(spec)
     return spec_string
 
@@ -205,7 +227,7 @@ def generate_spec(completions, context_path, orig, aux):
     fo_comp_exp = r'definition of +(.+): *(forall.*$)'
     prop_comp_exp = r'definition of +(.+): *(\w+ ?<->.+$)'
     fo_cons_exp = r'constraint.+(forall.*$)'
-    prop_cons_exp = r'constraint.+.*: ?(not.+$)'
+    prop_cons_exp = r'constraint.*: ?(not.+$)|definition.*: ?(not.+$)'
     print("\nConstructing final specification...")
     for line in completions:
         fo_comp = re.search(fo_comp_exp, line)
@@ -213,9 +235,9 @@ def generate_spec(completions, context_path, orig, aux):
         fo_cons = re.search(fo_cons_exp, line)
         prop_cons = re.search(prop_cons_exp, line)
         if fo_comp:
-            spec_string = add_completion(fo_comp, renamed_privates, orig.publics, spec_string)
+            spec_string = add_completion(fo_comp, renamed_privates, orig, spec_string)
         elif prop_comp:
-            spec_string = add_completion(prop_comp, renamed_privates, orig.publics, spec_string)
+            spec_string = add_completion(prop_comp, renamed_privates, orig, spec_string)
         elif fo_cons:
             spec_string = add_constraint(fo_cons, spec_string)
         elif prop_cons:
@@ -232,39 +254,46 @@ def generate_spec(completions, context_path, orig, aux):
     return final_spec
 
 # Verify lp against spec
-def verify(lp_path, spec_path, simplify=True):
+def verify(lp_path, spec_path, time_limit, simplify=True):
     if simplify:
         command = "./anthem verify-program " + lp_path + " " + spec_path
     else:
         command = "./anthem verify-program --no-simplify " + lp_path + " " + spec_path
-    try:
-        anthem_output = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)
-        anthem_output.check_returncode()
-    except sproc.CalledProcessError:
-        print("Error running anthem: ", anthem_output.stderr)
-    print(anthem_output.stdout)
-    fail = r'\(not proven\)'
-    if re.search(fail, anthem_output.stdout):
+    if time_limit is not None:
+        command += " --time-limit " + str(time_limit)
+    outp = ''
+    with sproc.Popen(command, stdout=sproc.PIPE, bufsize=1, universal_newlines=True, shell=True) as p:
+        for line in p.stdout:
+            print(line, end='')
+            outp += line
+        return_code = p.wait()
+        if return_code:
+            raise sproc.CalledProcessError(return_code, command)
+            sys.exit(1)
+    if re.search(r'\(not proven\)', outp):
         return False
     else:
         return True
 
 if __name__ == "__main__":
     assert (sys.version_info >= (3, 6, 9)), "This script requires Python v3.6.9 (or later). Try python3"
-    files, aux = parse_cmd()
+    files, aux, time = parse_cmd()
     inputs, outputs = get_ug_preds(files["ctx"])
-    public_preds = list(set(inputs + outputs))
-    files["orig"], orig = preprocess(files["orig"], "orig", 1, public_preds)
-    files["alt"], alt = preprocess(files["alt"], "alt", 2, public_preds)
+    files["orig"], orig = preprocess(files["orig"], "orig", 1, inputs, outputs)
+    files["alt"], alt = preprocess(files["alt"], "alt", 2, inputs, outputs)
     global_summary["privates"] = list(orig.privates)
-    global_summary["publics"] = list(orig.publics)
+    global_summary["publics"] = list(orig.inputs.union(orig.outputs))
     completions = generate_completion(files["orig"], inputs, True)
+    if verbose:
+        print("\n####### Completions #######")
+        for c in completions:
+            print(c)
     if files["ctx"]:
         final_spec = generate_spec(completions, files["ctx"], orig, aux) 
     else:
         sproc.call("touch .spec", shell=True)
         final_spec = generate_spec(completions, ".spec", orig, aux) 
-    success = verify(files["alt"], final_spec, True)
+    success = verify(files["alt"], final_spec, time, True)
     if success:
         global_summary["equiv"] = "Equivalent"
     else:
