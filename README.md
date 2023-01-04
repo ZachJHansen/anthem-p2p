@@ -10,18 +10,23 @@
 ## Building
 
 ```sh
-$ git clone https://github.dev/ZachJHansen/anthem-p2p
+$ git clone https://github.dev/ZachJHansen/anthem-p2p.git
 ```
 
 `anthem-p2p` cannot be executed without `anthem`, which is built with Rust’s `cargo` toolchain.
-After [installing Rust](https://rustup.rs/), build `anthem` and transfer the executable to your anthem-p2p directory:
+After [installing Rust](https://rustup.rs/), build the following `anthem` fork and transfer the executable to your anthem-p2p directory:
 
 ```sh
-$ git clone https://github.com/potassco/anthem.git
+$ git clone https://github.com/jorgefandinno/anthem.git
 $ cd anthem
 $ cargo build --release
 $ cp target/release/anthem <path to anthem-p2p/>
 $ cd <path to anthem-p2p/>
+```
+Note that you will also need a working installation of `vampire.`
+Installation instructions can be found here:
+```sh
+https://vprover.github.io/
 ```
 
 ## Usage
@@ -32,7 +37,7 @@ To verify that two programs are equivalent under a user guide:
 $ python3 anthem-p2p <program file> <program file> <user guide file>
 ```
 
-This will produce four files: two .lp files containing `anthem-p2p` compliant versions of the programs, a text file containing the completed definitions of predicates occurring in the first program, and a specification file against which the second program is verified. 
+This will produce three files: two .lp files containing `anthem-p2p` compliant versions of the logic programs, and a specification file against which the second program is verified. 
 
 For example, consider an unsafe version of a prime number program (primes_int.1.lp):
 
@@ -73,10 +78,10 @@ $ lemma: forall X (prime(X) -> exists N1 (exists N2, N3 (N2 = a and N3 = b and N
 $ lemma: forall X, N1, N2 ( (N1 > 1 and N2 > 1 and X = N1 * N2) -> (N1 <= X and N2 <= X) ).
 ```
 
-Execute `anthem-p2p` with helper lemmas:
+Execute `anthem-p2p` with helper lemmas and a specified timeout in seconds for Vampire:
 
 ```sh
-$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug primes.help.spec
+$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug --lemmas primes.help.spec --time-limit 600
 ```
 
 ## Contributors
