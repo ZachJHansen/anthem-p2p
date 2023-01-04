@@ -10,7 +10,7 @@
 ## Building
 
 ```sh
-$ git clone https://github.dev/ZachJHansen/anthem-p2p
+$ git clone https://github.dev/ZachJHansen/anthem-p2p.git
 ```
 
 `anthem-p2p` cannot be executed without `anthem`, which is built with Rust’s `cargo` toolchain.
