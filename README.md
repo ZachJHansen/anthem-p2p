@@ -14,10 +14,10 @@ $ git clone https://github.dev/ZachJHansen/anthem-p2p
 ```
 
 `anthem-p2p` cannot be executed without `anthem`, which is built with Rust’s `cargo` toolchain.
-After [installing Rust](https://rustup.rs/), build `anthem` and transfer the executable to your anthem-p2p directory:
+After [installing Rust](https://rustup.rs/), build the following `anthem` fork and transfer the executable to your anthem-p2p directory:
 
 ```sh
-$ git clone https://github.com/potassco/anthem.git
+$ git clone https://github.com/jorgefandinno/anthem.git
 $ cd anthem
 $ cargo build --release
 $ cp target/release/anthem <path to anthem-p2p/>
@@ -73,10 +73,10 @@ $ lemma: forall X (prime(X) -> exists N1 (exists N2, N3 (N2 = a and N3 = b and N
 $ lemma: forall X, N1, N2 ( (N1 > 1 and N2 > 1 and X = N1 * N2) -> (N1 <= X and N2 <= X) ).
 ```
 
-Execute `anthem-p2p` with helper lemmas:
+Execute `anthem-p2p` with helper lemmas and a specified timeout in seconds for Vampire (default is 5 minutes):
 
 ```sh
-$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug primes.help.spec
+$ python3 anthem-p2p.py primes_int.1.lp primes_int.2.lp primes_int.ug --lemmas primes.help.spec --time-limit 120
 ```
 
 ## Contributors
