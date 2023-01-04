@@ -2,7 +2,7 @@ import json, argparse
 import subprocess as sproc
 from program import *
 
-verbose = False
+verbose_flag = False
 global_summary = {"assumptions": [], "specs": []}
 
 # Parse the optional spec file, return
@@ -38,10 +38,9 @@ def parse_cmd():
         sys.exit(1)
     files["orig"], files["alt"], files["ctx"] = args.lp[0], args.lp[1], args.ug[0]
     aux = parse_lemmas(args.aux)
-    print(args.verbose)
     if args.verbose == "y":
-        print("checck")
-        verbose = True
+        global verbose_flag
+        verbose_flag = True
     # Sanity Check
     if not re.search(r'.*.lp$', files["orig"]):
         print("Error (1) parsing program arguments: expects 2 files with .lp extension, and 1 file with a .ug extension")
@@ -111,7 +110,7 @@ def preprocess(fp, name, addendum, inputs, outputs):
     syntax_check(fp)
     try:
         with open(fp, "r") as f:
-            program = Program(name, f.readlines(), verbose)
+            program = Program(name, f.readlines(), verbose_flag)
         f.close()
         program.rename_predicates(inputs, outputs, addendum)
         path = "/".join(fp.split("/")[0:-1])
@@ -284,7 +283,7 @@ if __name__ == "__main__":
     global_summary["privates"] = list(orig.privates)
     global_summary["publics"] = list(orig.inputs.union(orig.outputs))
     completions = generate_completion(files["orig"], inputs, True)
-    if verbose:
+    if verbose_flag:
         print("\n####### Completions #######")
         for c in completions:
             print(c)
