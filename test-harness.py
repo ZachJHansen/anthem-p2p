@@ -3,6 +3,8 @@ import subprocess as sproc
 
 
 def success(answers, result):
+    print("Answers:", answers)
+    print("Result:", result)
     flag = True
     for name in result.keys():
         elem = result[name]
@@ -41,8 +43,8 @@ for path in test_cases.keys():
 
     if success(test_cases[path]["1"], result1):
         if success(test_cases[path]["2"], result2):
-            print("success")
+            print("success\n")
         else:
-            print("fail")
+            print("fail\n")
     else:
         print("fail")

@@ -63,11 +63,27 @@
                 "equiv": "Equivalent"
             }
     },
+    "ex4": {
+            "1" : {
+                "privates": ["r/0"],
+                "publics": ["p/0", "q/0", "s/0"],
+                "assumptions": ["r_1/0"],
+                "specs": ["q/0", "s/0"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": [],
+                "publics": ["p/0", "q/0", "s/0"],
+                "assumptions": [],
+                "specs": ["q/0", "s/0"],
+                "equiv": "Equivalent"
+            }
+    },
 	"intervals": {
             "1" : {
                 "privates": ["p/1", "q/1"],
                 "publics": ["r/1"],
-                "assumptions": ["p_1/1","q_1/0"],
+                "assumptions": ["p_1/1","q_1/1"],
                 "specs": ["r/1"],
                 "equiv": "Equivalent"
             },
@@ -81,16 +97,16 @@
     },
     "queens": {
             "1" : {
-                "privates": ["q/2"],
+                "privates": ["q/2", "diff/3"],
                 "publics": ["q/1"],
-                "assumptions": ["q_1/2"],
+                "assumptions": ["q_1/2", "diff_1/3"],
                 "specs": ["q/1"],
                 "equiv": "Equivalent"
             },
             "2" : {
-                "privates": ["q/2"],
+                "privates": ["q/2", "diff/3"],
                 "publics": ["q/1"],
-                "assumptions": ["q_1/2"],
+                "assumptions": ["q_1/2", "diff_1/3"],
                 "specs": ["q/1"],
                 "equiv": "Equivalent"
             }
