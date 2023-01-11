@@ -79,6 +79,38 @@
                 "equiv": "Equivalent"
             }
     },
+    "primes": {
+            "1" : {
+                "privates": ["composite/1"],
+                "publics": ["prime/1"],
+                "assumptions": ["composite_1/0"],
+                "specs": ["prime/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+		"privates": ["composite/1"],
+                "publics": ["prime/1"],
+                "assumptions": ["composite_1/0"],
+                "specs": ["prime/1"],
+                "equiv": "Equivalent"
+            }
+    },
+    "primes_int": {
+            "1" : {
+                "privates": ["composite/1"],
+                "publics": ["prime/1"],
+                "assumptions": ["composite_1/0"],
+                "specs": ["prime/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["composite/1"],
+                "publics": ["prime/1"],
+                "assumptions": ["composite_1/0"],
+                "specs": ["prime/1"],
+                "equiv": "Equivalent"
+            }
+    },
 	"intervals": {
             "1" : {
                 "privates": ["p/1", "q/1"],
@@ -92,6 +124,22 @@
                 "publics": ["r/1"],
                 "assumptions": [],
                 "specs": ["r/1"],
+                "equiv": "Equivalent"
+            }
+    },
+    "squares": {
+            "1" : {
+                "privates": [],
+                "publics": ["p/1"],
+                "assumptions": [],
+                "specs": ["p_1/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": [],
+                "publics": ["p/1"],
+                "assumptions": [],
+                "specs": ["p_1/1"],
                 "equiv": "Equivalent"
             }
     },
