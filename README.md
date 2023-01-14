@@ -19,15 +19,20 @@ After [installing Rust](https://rustup.rs/), build the following `anthem` fork a
 ```sh
 $ git clone https://github.com/jorgefandinno/anthem.git
 $ cd anthem
-$ cargo build --release
+$ cargo +nightly build --release
 $ cp target/release/anthem <path to anthem-p2p/>
 $ cd <path to anthem-p2p/>
 ```
 Note that you will also need a working installation of `vampire.`
-Installation instructions can be found here:
+Installation instructions can be found [here](https://vprover.github.io/).
+Add the Vampire binary to your path:
 ```sh
-https://vprover.github.io/
+mv vampire ${HOME}/bin/
+chmod 755 ${HOME}/bin/vampire
+touch ${HOME}/.bashrc
+export PATH="${HOME}/bin:${PATH}"
 ```
+Then restart your shell.
 
 ## Usage
 
