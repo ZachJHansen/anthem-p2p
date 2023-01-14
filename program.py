@@ -60,7 +60,8 @@ def process_head(line):
         head = choice.group(1)
         literals.append(("{", head, "}"))
         return literals
-    literals.append((None, line, None))
+    for l in line.split("%"):
+        literals.append((None, l, None))
     #print("Head literals:", literals)
     return literals
 
@@ -250,6 +251,7 @@ class Program:
         lit_counter = 0
         for tup in literal_candidates:
             lit = tup[1].strip("\t").strip()
+            print("Literal candidate:", lit)
             if lit:                                                                         # Empty check
                 name = "_l" + str(line_number) + "l" + str(lit_counter) + "_"
                 if re.search(r'^not not \w', lit):                                          # Doubly negated atom
@@ -274,6 +276,7 @@ class Program:
                 lit_counter += 1
                 literal_objects.append(lit)
         self.literals.append(literal_objects)
+        print("Literals", self.literals)
         return line
 
     def print_program(self, fp):
