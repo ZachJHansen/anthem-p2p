@@ -83,14 +83,14 @@
             "1" : {
                 "privates": ["composite/1"],
                 "publics": ["prime/1"],
-                "assumptions": ["composite_1/0"],
+                "assumptions": ["composite_1/1"],
                 "specs": ["prime/1"],
                 "equiv": "Equivalent"
             },
             "2" : {
 		"privates": ["composite/1"],
                 "publics": ["prime/1"],
-                "assumptions": ["composite_1/0"],
+                "assumptions": ["composite_1/1"],
                 "specs": ["prime/1"],
                 "equiv": "Equivalent"
             }
@@ -156,6 +156,38 @@
                 "publics": ["q/1"],
                 "assumptions": ["q_1/2", "diff_1/3"],
                 "specs": ["q/1"],
+                "equiv": "Equivalent"
+            }
+    },
+    "three_squares": {
+            "1" : {
+                "privates": ["three/1"],
+                "publics": ["more_than_three/1"],
+                "assumptions": ["three_1/3"],
+                "specs": ["more_than_three/1"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["three/1"],
+                "publics": ["more_than_three/1"],
+                "assumptions": ["three_1/3"],
+                "specs": ["more_than_three/1"],
+                "equiv": "Equivalent"
+            }
+    },
+    "tiling": {
+            "1" : {
+                "privates": ["h/2", "v/2", "square/2", "covered/2"],
+                "publics": ["plc/3"],
+                "assumptions": ["h_1/2", "v_1/2", "square_1/2", "covered_1/2"],
+                "specs": ["plc/3"],
+                "equiv": "Equivalent"
+            },
+            "2" : {
+                "privates": ["index/1", "type/1", "place/3", "filled/2"],
+                "publics": ["plc/3"],
+                "assumptions": ["index_1/1", "type_1/1", "place_1/3", "filled_1/2"],
+                "specs": ["plc3"],
                 "equiv": "Equivalent"
             }
     }

@@ -1,4 +1,4 @@
-import json, sys
+import json, sys, re
 import subprocess as sproc
 
 
@@ -24,9 +24,13 @@ for path in test_cases.keys():
     try:
         f = open(path + "-testing-result.txt", "w")
         command = "python3 anthem-p2p.py examples/" + path + "/" + path + ".1.lp examples/" + path + "/" + path + ".2.lp examples/" + path + "/" + path + ".ug "
+        if re.search("primes", path):
+            command = command + " --lemmas examples/primes/primes.help.spec"
         sproc.run(command, encoding='utf-8', stdout=f, shell=True)
 
         command = "python3 anthem-p2p.py examples/" + path + "/" + path + ".2.lp examples/" + path + "/" + path + ".1.lp examples/" + path + "/" + path + ".ug "
+        if re.search("primes", path):
+            command = command + " --lemmas examples/primes/primes.help.spec"
         sproc.run(command, encoding='utf-8', stdout=f, shell=True)
         f.close()
 
