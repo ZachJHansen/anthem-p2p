@@ -1,0 +1,52 @@
+[   
+{
+    "orphan": {
+        "privates1": [],
+        "publics1": ["living/1", "father/2", "mother/2", "orphan/1"],
+        "assumptions1": [],
+        "specs1": ["orphan/1"],
+
+        "privates2": ["parent_living/1"],
+        "publics2": ["living/1", "father/2", "mother/2", "orphan/1"],
+        "assumptions2": ["parent_living_1/1"],
+        "specs2": ["orphan/1"],
+        "equiv": "Equivalent"
+    },
+
+    "primes": {
+        "privates1": ["composite/1"],
+        "publics1": ["prime/1"],
+        "assumptions1": ["composite_1/1"],
+        "specs1": ["prime/1"],
+
+        "privates2": ["composite/1"],
+        "publics2": ["prime/1"],
+        "assumptions2": ["composite_1/1"],
+        "specs2": ["prime/1"],
+        "equiv": "Equivalent"
+    },
+
+    "ex2": {
+        "privates1": ["q/1"],
+        "publics1": ["p/1", "r/1"],
+        "assumptions1": ["q_1/1"],
+        "specs1": ["r/1"],
+
+        "privates2": [],
+        "publics2": ["p/1", "r/1"],
+        "assumptions2": [],
+        "specs2": ["r/1"],
+        "equiv": "Equivalent"
+    }
+}
+]
+
+Each example has its own directory. 
+Running anthem-p2p on orphan.1.lp orpan.2.lp should produce the private and public predicates in privates1 and publics1.
+It should add the completed definitions of the public predicates listed in specs1 as specs to the final specification.
+It should add the completed definitions of the renamed private predicates listed in assumptions1 as assumptions to the final specification, and also list them as inputs.
+Reversing the program order (e.g. anthem-p2p orphan.2.lp orphan.1.lp) should have the outputs described in privates2, etc.
+The programs are either equivalent under the .ug found in the directory or not.
+
+
+Private predicates

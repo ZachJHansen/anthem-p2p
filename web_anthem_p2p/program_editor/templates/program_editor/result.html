@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Anthem-P2P Main Page</title>
+        <style>
+            #boxes {
+              content: "";
+              display: table;
+              clear: both;
+            }
+            div {
+              float: left;
+              height: 50%;
+              width: 50%;
+              padding: 0 10px;
+              box-sizing: border-box;
+            }
+            div[name=head] {
+              float: left;
+              height: 100%;
+              width: 100%;
+              padding: 0 10px;
+              box-sizing: border-box;
+            }
+            div[name=docs] {
+              float: right;
+              height: 100%;
+              width: 100%;
+              padding: 0 10px;
+              box-sizing: border-box;
+            }
+            h2 {
+              color: #000000;
+              text-align: center;
+            }
+            textarea {
+                resize: none;
+                background-color: #c3c5c4;
+            }
+            textarea[name=output] {
+                resize: none;
+                background-color: #fdfdfd;
+            }
+          </style>
+    </head>
+    <body>
+        <header id="boxes">
+            <div name="head">
+                <h1>Running Anthem-P2P</h1>
+            </div>
+            <div name="docs" class="trigger"> 
+                <a class="page-link" href="https://github.com/ZachJHansen/anthem-p2p">Documentation</a>
+            </div>
+        </header>
+        <form action = "/verify/" method = "post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="time_limit">Time Limit (Minutes):</label>
+                {{ form.time_limit }}
+            </div>
+            <main id="boxes">
+                <div class="form-group">
+                    <h3>Original Program</h3>
+                    {{ form.original_program }}
+                </div>
+                <div class="form-group">
+                    <h3>Alternative Program</h3>
+                    {{ form.alternative_program }}
+                </div>
+                <div class="form-group">
+                    <h3>User Guide</h3>
+                    {{ form.user_guide }}
+                </div>
+                <div class="form-group">
+                    <h3>Helper Lemmas</h3>
+                    {{ form.helper_lemmas }}
+                </div>
+                <input type="submit" value="Verify Programs">
+            </main>
+            <div class="form-group">
+                <h3>Output</h3>
+                {{ form.output }}
+            </div>
+        </form>
+    </body>
+</html>
