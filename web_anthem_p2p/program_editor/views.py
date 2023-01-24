@@ -48,8 +48,10 @@ def run_anthem_p2p(raw_map):
     f.close()
     time_limit = 300
     try:
-        time_limit = int(raw_map["time_limit"]) * 60
-    except:
+        tl = raw_map.get("time_limit", 30)
+        if tl and tl.strip():
+            time_limit = int(tl) * 60
+    except Exception as e:
         print("Enter time limit in minutes!")
         return("Invalid time limit. Please enter time limit in minutes.")
     command = "python3 ../anthem-p2p.py " + orig_name + " " + alt_name + " " + ug_name 

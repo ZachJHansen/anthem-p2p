@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Anthem-P2P Main Page</title>
+        <title>Anthem-P2P: Verifying</title>
         <style>
             #boxes {
               content: "";
               display: table;
               clear: both;
+	      width: 100%;
             }
             div {
               float: left;
@@ -36,12 +37,22 @@
             textarea {
                 resize: none;
                 background-color: #c3c5c4;
+		width: 95%;
             }
             textarea[name=output] {
                 resize: none;
                 background-color: #fdfdfd;
 		width: 95%;
             }
+	    #clicker {
+                color: #c3c5c4;
+                width: auto;
+		height: auto;
+            }
+	    #op {
+		float: center;
+		width: 85%;
+	    }
           </style>
     </head>
     <body>
@@ -77,19 +88,19 @@
                     {{ form.helper_lemmas }}
                 </div>
             </main>
-	    <div>
+	    <div id="clicker">
                 <button onClick="showDiv()">Verify Programs</button>
             </div>
-                <div id="welcomeDiv"  style="display:none;" class="answer_list">Vampire is searching for a proof...</div>
-            <div class="form-group">
+            <span id="loadingMsg"  style="display:none;" class="answer_list">Vampire is searching for a proof...</span>
+            <div id="op" class="form-group">
                 <h3>Output</h3>
                 {{ form.output }}
             </div>
+        </form>
         <script>
         function showDiv() {
-                document.getElementById('welcomeDiv').style.display = "block";
+                document.getElementById('loadingMsg').style.display = "block";
         }
         </script>
-        </form>
     </body>
 </html>

@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Anthem-P2P Main Page</title>
+        <title>Anthem-P2P</title>
         <style>
             #boxes {
               content: "";
               display: table;
               clear: both;
+	      width: 100%;
+	      height: 50%;
             }
 	    div {
               float: left;
@@ -14,17 +16,9 @@
               width: 50%;
               padding: 0 10px;
               box-sizing: border-box;
-	      background-color: #c3f3a3;
             }
             div[name=head] {
               float: left;
-              height: 100%;
-              width: 100%;
-              padding: 0 10px;
-              box-sizing: border-box;
-            }
-            div[name=docs] {
-              float: right;
               height: 100%;
               width: 100%;
               padding: 0 10px;
@@ -39,6 +33,14 @@
 		width: 95%;
                 background-color: #c3c5c4;
             }
+	    #tl {
+		width: auto;
+		color: #000000;
+	    }
+	    #clicker {
+		color: #c3c5c4;
+		width: auto;
+	    }
           </style>
     </head>
     <body>
@@ -46,13 +48,13 @@
             <div name="head">
                 <h1>Running Anthem-P2P</h1>
             </div>
-            <div name="docs" class="trigger"> 
+            <span name="docs" class="trigger"> 
                 <a class="page-link" href="https://github.com/ZachJHansen/anthem-p2p">Documentation</a>
-            </div>
+            </span>
         </header>
         <form action = "/verify/" method = "post">
             {% csrf_token %}
-            <div class="form-group">
+            <div id="tl" class="form-group">
                 <label for="time_limit">Time Limit (Minutes):</label>
                 {{ form.time_limit }}
             </div>
@@ -74,14 +76,14 @@
                     {{ form.helper_lemmas }}
                 </div>
             </main>
-	    <div>
-  	    	<button onClick="showDiv()">Verify Programs</button>
+	    <div id="clicker">
+  	    	<button onClick="showy()">Verify Programs</button>
 	    </div>
-	    	<div id="welcomeDiv"  style="display:none;" class="answer_list">Vampire is searching for a proof...</div>
         </form>
+	<span id="loadingMsg"  style="display:none;">Vampire is searching for a proof...</span>
 	<script>
-	function showDiv() {
-   		document.getElementById('welcomeDiv').style.display = "inline";
+	function showy() {
+   		document.getElementById('loadingMsg').style.display = "inline";
 	}
 	</script>
     </body>
