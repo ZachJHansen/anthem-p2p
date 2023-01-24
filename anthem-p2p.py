@@ -276,6 +276,12 @@ def verify(lp_path, spec_path, time_limit, simplify=True):
 
 if __name__ == "__main__":
     assert (sys.version_info >= (3, 6, 9)), "This script requires Python v3.6.9 (or later). Try python3"
+    try:
+        clingo_check = sproc.run('clingo --version', encoding='utf-8', stdout=sproc.PIPE, stderr=sproc.PIPE, shell=True)
+        clingo_check.check_returncode()
+    except sproc.CalledProcessError:
+        print("Error running clingo! Is it installed?")
+        sys.exit(1)
     files, aux, time = parse_cmd()
     inputs, outputs = get_ug_preds(files["ctx"])
     files["orig"], orig = preprocess(files["orig"], "orig", 1, inputs, outputs)

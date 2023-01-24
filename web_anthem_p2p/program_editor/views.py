@@ -48,11 +48,11 @@ def run_anthem_p2p(raw_map):
     f.close()
     time_limit = 300
     try:
-        time_limit = float(raw_map["time_limit"]) * 60
+        time_limit = int(raw_map["time_limit"]) * 60
     except:
         print("Enter time limit in minutes!")
         return("Invalid time limit. Please enter time limit in minutes.")
-    command = "python3 program_editor/anthem-p2p.py " + orig_name + " " + alt_name + " " + ug_name 
+    command = "python3 ../anthem-p2p.py " + orig_name + " " + alt_name + " " + ug_name 
     command += " -l " + lem_name + " -t " + str(time_limit)
     try:
         ap2p_out = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)  # Run anthem-p2p.py

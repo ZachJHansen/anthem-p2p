@@ -40,6 +40,7 @@
             textarea[name=output] {
                 resize: none;
                 background-color: #fdfdfd;
+		width: 95%;
             }
           </style>
     </head>
@@ -75,12 +76,20 @@
                     <h3>Helper Lemmas</h3>
                     {{ form.helper_lemmas }}
                 </div>
-                <input type="submit" value="Verify Programs">
             </main>
+	    <div>
+                <button onClick="showDiv()">Verify Programs</button>
+            </div>
+                <div id="welcomeDiv"  style="display:none;" class="answer_list">Vampire is searching for a proof...</div>
             <div class="form-group">
                 <h3>Output</h3>
                 {{ form.output }}
             </div>
+        <script>
+        function showDiv() {
+                document.getElementById('welcomeDiv').style.display = "block";
+        }
+        </script>
         </form>
     </body>
 </html>

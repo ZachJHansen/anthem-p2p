@@ -8,12 +8,13 @@
               display: table;
               clear: both;
             }
-            div {
+	    div {
               float: left;
               height: 50%;
               width: 50%;
               padding: 0 10px;
               box-sizing: border-box;
+	      background-color: #c3f3a3;
             }
             div[name=head] {
               float: left;
@@ -35,6 +36,7 @@
             }
             textarea {
                 resize: none;
+		width: 95%;
                 background-color: #c3c5c4;
             }
           </style>
@@ -72,7 +74,15 @@
                     {{ form.helper_lemmas }}
                 </div>
             </main>
-            <input type="submit" value="Verify Programs">
+	    <div>
+  	    	<button onClick="showDiv()">Verify Programs</button>
+	    </div>
+	    	<div id="welcomeDiv"  style="display:none;" class="answer_list">Vampire is searching for a proof...</div>
         </form>
+	<script>
+	function showDiv() {
+   		document.getElementById('welcomeDiv').style.display = "inline";
+	}
+	</script>
     </body>
 </html>
