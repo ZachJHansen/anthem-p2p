@@ -51,9 +51,10 @@ def parse_cmd():
     if not re.search(r'.*.ug$', files["ctx"]):
         print("Error (3) parsing program arguments: expects 2 files with .lp extension, and 1 file with a .ug extension")
         sys.exit(1)
-    print("\n####### Input Files (Original, Alternative, Context) #######")
-    print(files)
-    print("")
+    if verbose_flag:
+        print("\n####### Input Files (Original, Alternative, Context) #######")
+        print(files)
+        print("")
     return files, aux, args.time
 
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
@@ -82,10 +83,11 @@ def get_ug_preds(fp):
                 else:
                     pass
         f.close()
-        print("####### Input predicates from UG: #######")
-        print(inputs)
-        print("\n####### Output predicates from UG: #######")
-        print(outputs)
+        if verbose_flag:
+            print("####### Input predicates from UG: #######")
+            print(inputs)
+            print("\n####### Output predicates from UG: #######")
+            print(outputs)
         return inputs, outputs
     else:
         print("Fatal error")
@@ -159,14 +161,16 @@ def generate_completion(fp, inputs, simplify=True):
 def add_completion(comp, renamed_privates, program, spec_string):
     predicate = comp.group(1)
     if predicate in renamed_privates:
-        print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
+        if verbose_flag:
+            print("\tCompleted definition of renamed private predicate", predicate, "is being added as an input and assumption to the final specification.")
         global_summary["assumptions"].append(predicate) 
         spec = "assume: " + comp.group(2)
         spec_string += terminator(spec)
         inp = "input: " + predicate
         spec_string += terminator(inp)
     elif predicate in program.outputs:
-        print("\tCompleted definition of output predicate", predicate, "is being added as a spec to the final specification.")
+        if verbose_flag:
+            print("\tCompleted definition of output predicate", predicate, "is being added as a spec to the final specification.")
         global_summary["specs"].append(predicate) 
         spec = "spec: " + comp.group(2)
         spec_string += terminator(spec)
@@ -197,7 +201,8 @@ def add_constraint(cons, spec_string):
         match = cons.group(2)
     else:
         match = cons.group(1)
-    print("\tConstraint", match, "is being added as a spec to the final specification.")
+    if verbose_flag:
+        print("\tConstraint", match, "is being added as a spec to the final specification.")
     spec = "spec: " + match
     spec_string += terminator(spec)
     return spec_string
@@ -227,7 +232,8 @@ def generate_spec(completions, context_path, orig, aux):
     prop_comp_exp = r'definition of +(.+): *(\w+ ?<->.+$)'
     fo_cons_exp = r'constraint.+(forall.*$)'
     prop_cons_exp = r'constraint.*: ?(not.+$)|definition.*: ?(not.+$)'
-    print("\nConstructing final specification...")
+    if verbose_flag:
+        print("\nConstructing final specification...")
     for line in completions:
         fo_comp = re.search(fo_comp_exp, line)
         prop_comp = re.search(prop_comp_exp, line)

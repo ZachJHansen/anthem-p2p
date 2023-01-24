@@ -57,13 +57,11 @@ def process_head(line):
         return literals
     choice = re.search(r'^{(.+)}.+$', line)                       # { p(X) } or { p(X) }.
     if choice:
-        print("why dont you see me")
         head = choice.group(1)
         literals.append(("{", head, "}"))
         return literals
     for l in line.split("%"):
         literals.append((None, l, None))
-    #print("Head literals:", literals)
     return literals
 
 def process_body(line):
@@ -252,7 +250,6 @@ class Program:
         lit_counter = 0
         for tup in literal_candidates:
             lit = tup[1].strip("\t").strip()
-            #print("Literal candidate:", lit)
             if lit:                                                                         # Empty check
                 name = "_l" + str(line_number) + "l" + str(lit_counter) + "_"
                 if re.search(r'^not not \w', lit):                                          # Doubly negated atom
@@ -277,11 +274,6 @@ class Program:
                 lit_counter += 1
                 literal_objects.append(lit)
         self.literals.append(literal_objects)
-        #print("Literals", self.literals)
-        for lit in self.literals:
-            for l in lit:
-                print("L | ", l.preceding_char, "|", l.raw, "|", l.following_char)
-
         return line
 
     def print_program(self, fp):

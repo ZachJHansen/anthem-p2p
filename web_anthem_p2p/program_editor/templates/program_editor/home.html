@@ -20,7 +20,7 @@
             div[name=head] {
               float: left;
               height: 100%;
-              width: 100%;
+              width: 50%;
               padding: 0 10px;
               box-sizing: border-box;
             }
@@ -30,6 +30,7 @@
             }
             textarea {
                 resize: none;
+		height: 95%;
 		width: 95%;
                 background-color: #c3c5c4;
             }
@@ -40,6 +41,11 @@
 	    #clicker {
 		color: #c3c5c4;
 		width: auto;
+	    }
+	    span[name=docs] {
+		display: flex;
+  		justify-content: center;
+  		align-items: center;
 	    }
           </style>
     </head>
@@ -55,7 +61,7 @@
         <form action = "/verify/" method = "post">
             {% csrf_token %}
             <div id="tl" class="form-group">
-                <label for="time_limit">Time Limit (Minutes):</label>
+                <label for="time_limit">Time Limit (Minutes, One Direction):</label>
                 {{ form.time_limit }}
             </div>
             <main id="boxes">

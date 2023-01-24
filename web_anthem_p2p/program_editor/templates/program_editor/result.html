@@ -8,6 +8,7 @@
               display: table;
               clear: both;
 	      width: 100%;
+	      height: 60%;
             }
             div {
               float: left;
@@ -43,6 +44,7 @@
                 resize: none;
                 background-color: #fdfdfd;
 		width: 95%;
+		height: 95%;
             }
 	    #clicker {
                 color: #c3c5c4;
@@ -67,7 +69,7 @@
         <form action = "/verify/" method = "post">
             {% csrf_token %}
             <div class="form-group">
-                <label for="time_limit">Time Limit (Minutes):</label>
+                <label for="time_limit">Time Limit (Minutes, One Direction):</label>
                 {{ form.time_limit }}
             </div>
             <main id="boxes">

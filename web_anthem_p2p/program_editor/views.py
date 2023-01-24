@@ -1,5 +1,4 @@
-import json
-import sys, re
+import json, sys, re
 import subprocess as sproc
 from datetime import datetime
 
@@ -18,14 +17,19 @@ def verify(request):
         form = InputForm(rp)
         if form.is_valid():
             outp = run_anthem_p2p(form.cleaned_data)
-        print(outp)
+        if re.search(r'\(not proven\)', outp):
+            outp = outp + "\nBOTTOM LINE: AP2P was unable to find a proof of equivalence between the programs within the time limit."
+        else:
+            outp = outp + "\n BOTTOM LINE: AP2P found a proof of equivalence between the programs!"
+        final_output = '\n'.join([line for line in outp.split("\n") if re.search(r'Verifying', line) is None])
+        print(final_output)
         form = OutputForm({
             'time_limit': rp['time_limit'],
             'original_program': rp['original_program'],
             'alternative_program': rp['alternative_program'],
             'user_guide': rp['user_guide'],
             'helper_lemmas': rp['helper_lemmas'],
-            'output': outp})
+            'output': final_output})
         return render(request, 'program_editor/result.html', {'form': form})
 
 def run_anthem_p2p(raw_map):
@@ -50,7 +54,7 @@ def run_anthem_p2p(raw_map):
     try:
         tl = raw_map.get("time_limit", 30)
         if tl and tl.strip():
-            time_limit = int(tl) * 60
+            time_limit = int(float(tl) * 60)
     except Exception as e:
         print("Enter time limit in minutes!")
         return("Invalid time limit. Please enter time limit in minutes.")
