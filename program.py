@@ -47,7 +47,7 @@ def process_head(line):
     if line is None:
         return literals
     line = line.strip("\n").strip()
-    cl = re.search(r'^{(.+):(.+)}.+$', line)
+    cl = re.search(r'^{(.+):(.+)}.?$', line)
     if cl:                                                      # { p(X) : q(X),...,t(X) }
         head, body = cl.group(1), cl.group(2).split("%")
         literals.append(("{", head, ":"))
@@ -55,7 +55,7 @@ def process_head(line):
             literals.append((None, body[i], None))
         literals.append((None, body[-1], "}"))
         return literals
-    choice = re.search(r'^{(.+)}.+$', line)                       # { p(X) } or { p(X) }.
+    choice = re.search(r'^{(.+)}.?$', line)                       # { p(X) } or { p(X) }.
     if choice:
         head = choice.group(1)
         literals.append(("{", head, "}"))
@@ -325,7 +325,6 @@ class Program:
                                 line = line.replace(t.name, t.raw)
                 if literal_counter == 0 and self.rule_types[line_counter] == 1:     # Head :- Body
                     if literal.following_char == ":":                               # Head has form { p(X) : q(X) ... }
-                        print("Hello: ", line)
                         pass
                     else:
                         line += " :- "
