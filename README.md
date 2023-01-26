@@ -27,10 +27,11 @@ Note that you will also need a working installation of `vampire.`
 Installation instructions can be found [here](https://vprover.github.io/).
 Add the Vampire binary to your path:
 ```sh
-mv vampire ${HOME}/bin/
-chmod 755 ${HOME}/bin/vampire
-touch ${HOME}/.bashrc
-export PATH="${HOME}/bin:${PATH}"
+mkdir ~/bin/
+ln -s <path to anthem-p2p>/vampire ~/bin/vampire
+chmod 755 ~/bin/vampire
+touch ~/.bashrc
+export PATH="$~/bin:${PATH}"
 ```
 Then restart your shell.
 
