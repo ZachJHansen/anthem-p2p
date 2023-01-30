@@ -21,15 +21,13 @@ def verify(request):
             outp = outp + "\nBOTTOM LINE: AP2P was unable to find a proof of equivalence between the programs within the time limit."
         else:
             outp = outp + "\n BOTTOM LINE: AP2P found a proof of equivalence between the programs!"
-        final_output = '\n'.join([line for line in outp.split("\n") if re.search(r'Verifying', line) is None])
-        print(final_output)
         form = OutputForm({
             'time_limit': rp['time_limit'],
             'original_program': rp['original_program'],
             'alternative_program': rp['alternative_program'],
             'user_guide': rp['user_guide'],
             'helper_lemmas': rp['helper_lemmas'],
-            'output': final_output})
+            'output': outp})
         return render(request, 'program_editor/result.html', {'form': form})
 
 def run_anthem_p2p(raw_map):
@@ -76,4 +74,56 @@ def run_anthem_p2p(raw_map):
     sproc.call("rm temp-*.spec", shell=True)
     if ret_code != 1:
         print("Error running Anthem-P2P...")
-    return ap2p_out.stdout
+    return refactor_output(ap2p_out.stdout)
+
+def refactor_output(outp):
+    final_output = ["Attempting to derive output predicates in the original program (_1) from the alternative program's predicate definitions (_2)..."] 
+    for line in outp.split("\n"):
+        presupp = re.search(r'(Presupposed .+$)', line)
+        if presupp:
+            final_output.append('\t' + presupp.group(1))
+        elif re.search(r'Finished verification of specification from translated program', line):
+            final_output.append("\tFinished deriving the original program from the alternative program")
+            final_output.append("Attempting to derive output predicates in the alternative program (_2) from the original program's predicate definitions (_1)...")
+        elif re.search(r'Finished verification of translated program from specification', line):
+            final_output.append("\tFinished deriving the alternative program from the original program")
+        else:
+            failed_spec = re.search(r'(^.+Verifying spec:.+)(Verifying spec: .+ \(not proven\)$)', line)
+            failed_lemma = re.search(r'(^.+Verifying lemma:.+)(Verifying lemma: .+ \(not proven\)$)', line)
+            failed_comp = re.search(r'(^.+Verifying completed definition .+)(Verifying completed definition .+ \(not proven\)$)', line)
+            if failed_lemma:
+                final_output.append('\t  ' + failed_lemma.group(2) + "\n\t  Failed to prove the preceding lemma!")
+            elif failed_spec:
+                final_output.append('\t  ' + failed_spec.group(2) + "\n\t  Failed to prove the preceding spec!")
+            else:
+                if failed_comp:
+                    final_output.append('\t  ' + failed_comp.group(2) + "\n\t Failed to prove the preceding completed definition!")
+            succ_spec = re.search(r'(Verified spec: .+$)', line)
+            succ_lemma = re.search(r'(Verified lemma: .+$)', line)
+            succ_comp = re.search(r'(Verified completed definition .+$)', line)
+            if succ_spec:
+                final_output.append('\t  ' + succ_spec.group(1))
+            elif succ_lemma:
+                final_output.append('\t  ' + succ_lemma.group(1))
+            else:
+                if succ_comp:
+                    final_output.append('\t  ' + succ_comp.group(1))
+    return '\n'.join(final_output)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

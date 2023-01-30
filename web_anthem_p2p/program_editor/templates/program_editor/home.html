@@ -38,8 +38,10 @@
 		width: auto;
 		color: #000000;
 	    }
-	    #clicker {
-		color: #c3c5c4;
+	    #btnwrapper {
+		width: auto;
+	    }
+	    .button {
 		width: auto;
 	    }
 	    span[name=docs] {
@@ -54,9 +56,12 @@
             <div name="head">
                 <h1>Running Anthem-P2P</h1>
             </div>
-            <span name="docs" class="trigger"> 
-                <a class="page-link" href="https://github.com/ZachJHansen/anthem-p2p">Documentation</a>
-            </span>
+	    <div>
+		    <p>Anthem-P2P lets you automatically check that two ASP programs have the same external behavior.<br>
+		    In other words, their output predicates are identical under the assumptions in the user guide.<br>
+		    Programs may be written in a subset of the gringo input language, with optional lemmas directing<br>
+		    the proof search. See the <a class="page-link" href="https://github.com/ZachJHansen/anthem-p2p">documentation</a> for more details.</p>
+	    </div>
         </header>
         <form action = "/verify/" method = "post">
             {% csrf_token %}
@@ -82,8 +87,8 @@
                     {{ form.helper_lemmas }}
                 </div>
             </main>
-	    <div id="clicker">
-  	    	<button onClick="showy()">Verify Programs</button>
+	    <div id="btnwrapper">
+  	    	<button class="button" onClick="showy()">Verify Equivalence of Programs</button>
 	    </div>
         </form>
 	<span id="loadingMsg"  style="display:none;">Vampire is searching for a proof...</span>
