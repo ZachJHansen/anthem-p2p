@@ -77,16 +77,25 @@ def run_anthem_p2p(raw_map):
     return refactor_output(ap2p_out.stdout)
 
 def refactor_output(outp):
-    final_output = ["Attempting to derive output predicates in the original program (_1) from the alternative program's predicate definitions (_2)..."] 
+    direction = "forward"
+    forward, backward = True, True
+    final_output = ["Attempting to derive completed definitions in the original program (_1) from completed definitions in the alternative program (_2)..."] 
     for line in outp.split("\n"):
         presupp = re.search(r'(Presupposed .+$)', line)
         if presupp:
             final_output.append('\t' + presupp.group(1))
         elif re.search(r'Finished verification of specification from translated program', line):
-            final_output.append("\tFinished deriving the original program from the alternative program")
-            final_output.append("Attempting to derive output predicates in the alternative program (_2) from the original program's predicate definitions (_1)...")
+            if forward:
+                final_output.append("\tFinished deriving the original program from the alternative program")
+            else:
+                final_output.append("\tUnable to derive the original program from the alternative program")
+            direction = "backward"
+            final_output.append("Attempting to derive completed definitions in the alternative program (_2) from completed definitions in the original program (_1)...")
         elif re.search(r'Finished verification of translated program from specification', line):
-            final_output.append("\tFinished deriving the alternative program from the original program")
+            if backward:
+                final_output.append("\tFinished deriving the alternative program from the original program")
+            else:
+                final_output.append("\tUnable to derive the alternative program from the original program")
         else:
             failed_spec = re.search(r'(^.+Verifying spec:.+)(Verifying spec: .+ \(not proven\)$)', line)
             failed_lemma = re.search(r'(^.+Verifying lemma:.+)(Verifying lemma: .+ \(not proven\)$)', line)
@@ -98,6 +107,11 @@ def refactor_output(outp):
             else:
                 if failed_comp:
                     final_output.append('\t  ' + failed_comp.group(2) + "\n\t Failed to prove the preceding completed definition!")
+            if failed_spec or failed_comp:
+                if direction == "forward":
+                    forward = False
+                if direction == "backward":
+                    backward = False
             succ_spec = re.search(r'(Verified spec: .+$)', line)
             succ_lemma = re.search(r'(Verified lemma: .+$)', line)
             succ_comp = re.search(r'(Verified completed definition .+$)', line)
