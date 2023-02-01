@@ -268,18 +268,24 @@ def verify(lp_path, spec_path, time_limit, simplify=True):
         command += " --time-limit " + str(time_limit)
     outp = ''
     with sproc.Popen(command, stdout=sproc.PIPE, bufsize=1, universal_newlines=True, shell=True) as p:
+        verifying = False
         for line in p.stdout:
-            fail = re.search(r'Verified (.+): .+(not proven)$', line)
-            success = re.search(r'Verified (.+): .+$', line)
-            if line and line.strip():
-                if fail:
-                    print("\tFailed to verify " + fail.group(1))
-                elif success:
-                    print("\tSuccessfully verified " + success.group(1))
+            if verifying:                                                   # Previous line was a "Verifying ..."
+                fail = re.search(r'Verified (.+): .+\(not proven\)$', line)
+                success = re.search(r'Verified (.+): .+(in [0-9]+\.[0-9]+ seconds)$', line)
+                if line and line.strip():
+                    if fail:
+                        print("\tFailed to verify " + fail.group(1))
+                    elif success:
+                        print("\tSuccessfully verified " + success.group(1) + " " + success.group(2))
+                    else:
+                        print(line, end='')
                 else:
                     print(line, end='')
             else:
                 print(line, end='')
+            if re.search(r'Verifying .+$', line):
+                verifying = True
             outp += line
         return_code = p.wait()
         if return_code:
