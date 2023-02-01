@@ -269,7 +269,17 @@ def verify(lp_path, spec_path, time_limit, simplify=True):
     outp = ''
     with sproc.Popen(command, stdout=sproc.PIPE, bufsize=1, universal_newlines=True, shell=True) as p:
         for line in p.stdout:
-            print(line, end='')
+            fail = re.search(r'Verified (.+): .+(not proven)$', line)
+            success = re.search(r'Verified (.+): .+$', line)
+            if line and line.strip():
+                if fail:
+                    print("\tFailed to verify " + fail.group(1))
+                elif success:
+                    print("\tSuccessfully verified " + success.group(1))
+                else:
+                    print(line, end='')
+            else:
+                print(line, end='')
             outp += line
         return_code = p.wait()
         if return_code:
