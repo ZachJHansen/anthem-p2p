@@ -25,7 +25,7 @@ $ cd <path to anthem-p2p/>
 ```
 Note that you will also need a working installation of `vampire.`
 Installation instructions can be found [here](https://vprover.github.io/).
-Add the Vampire binary to your path:
+Alternatively, add the following Vampire binary to your path:
 ```sh
 mkdir ~/bin/
 ln -s <path to anthem-p2p>/vampire ~/bin/vampire
