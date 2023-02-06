@@ -17,9 +17,9 @@ $ git clone https://github.dev/ZachJHansen/anthem-p2p.git
 After [installing Rust](https://rustup.rs/), build the following `anthem` fork and transfer the executable to your anthem-p2p directory:
 
 ```sh
-$ git clone https://github.com/jorgefandinno/anthem.git
+$ git clone https://github.com/ZachJHansen/anthem-rs.git
 $ cd anthem
-$ cargo +nightly build --release
+$ cargo build --release
 $ cp target/release/anthem <path to anthem-p2p/>
 $ cd <path to anthem-p2p/>
 ```
