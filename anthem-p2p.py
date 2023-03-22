@@ -1,9 +1,11 @@
-import json, argparse
+import json, argparse, atexit
 import subprocess as sproc
 from program import *
 
+debug = False
 verbose_flag = False
 global_summary = {"assumptions": [], "specs": []}
+files = {"orig": None, "alt": None, "spec": None}
 
 # Parse the optional spec file, return
 # a string containing helper lemmas
@@ -24,7 +26,6 @@ def parse_lemmas(fname):
 
 # Identify lp, ug and spec files from command line input
 def parse_cmd():
-    files = {}
     try:
         parser = argparse.ArgumentParser("Anthem-P2P", "Verifies the equivalent external behavior of two logic programs.")
         parser.add_argument("lp", nargs=2, help="Logic programs")
@@ -55,7 +56,7 @@ def parse_cmd():
         print("\n####### Input Files (Original, Alternative, Context) #######")
         print(files)
         print("")
-    return files, aux, args.time
+    return aux, args.time
 
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
 # are considered public predicates. Input publics are used to 
@@ -258,53 +259,94 @@ def generate_spec(completions, context_path, orig, aux):
     f2.close()
     return final_spec
 
+
+def cleanup():
+    if files["orig"]:
+        sproc.call("rm " + files["orig"], shell=True)
+    if files["alt"]:
+        sproc.call("rm " + files["alt"], shell=True)
+    if files["spec"]:
+        sproc.call("rm " + files["spec"], shell=True)
+
 # Verify lp against spec
 def verify(lp_path, spec_path, time_limit, simplify=True):
+    success = True
+    forward, backward = True, True
+    direction = "forward"
+    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')                                    # Remove the ANSI escape characters
     if simplify:
         command = "./anthem verify-program " + lp_path + " " + spec_path
     else:
         command = "./anthem verify-program --no-simplify " + lp_path + " " + spec_path
     if time_limit is not None:
         command += " --time-limit " + str(time_limit)
-    outp = ''
-    with sproc.Popen(command, stdout=sproc.PIPE, bufsize=1, universal_newlines=True, shell=True) as p:
-        verifying = False
+    error_log = ''
+    with sproc.Popen(command, stdout=sproc.PIPE, stderr=sproc.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
+        print("Attempting to derive completed definitions in the original program (_1) from completed definitions in the alternative program (_2)...")
         for line in p.stdout:
-            if verifying:                                                   # Previous line was a "Verifying ..."
-                fail = re.search(r'Verified (.+): .+\(not proven\)$', line)
-                success = re.search(r'Verified (.+): .+(in [0-9]+\.[0-9]+ seconds)$', line)
-                if line and line.strip():
-                    if fail:
-                        print("\tFailed to verify " + fail.group(1))
-                    elif success:
-                        print("\tSuccessfully verified " + success.group(1) + " " + success.group(2))
-                    else:
-                        print(line, end='')
+            presupp = re.search(r'(Presupposed .+$)', line)
+            if presupp:
+                print('  ' + presupp.group(1))
+            elif re.search(r'Finished verification of specification from translated program', line):
+                if forward:
+                    print("  Finished deriving the original program from the alternative program")
                 else:
-                    print(line, end='')
+                    print("  Unable to derive the original program from the alternative program")
+                    success = False
+                direction = "backward"
+                print("\nAttempting to derive completed definitions in the alternative program (_2) from completed definitions in the original program (_1)...")
+            elif re.search(r'Finished verification of translated program from specification', line):
+                if backward:
+                    print("  Finished deriving the alternative program from the original program")
+                else:
+                    print("  Unable to derive the alternative program from the original program")
+                    success = False
+            elif re.search(r'ERROR anthem', line):
+                error_log = error_log + line
+                success = False
             else:
-                print(line, end='')
-            if re.search(r'Verifying .+$', line):
-                verifying = True
-            outp += line
+                line = ansi_escape.sub('@', line)
+                verifying_verified  = re.search(r'^@\s*Verifying .+:.+@@\s*(Verified .+: .+in [0-9]+\.[0-9]+ seconds)$', line)       # Successful
+                verifying_verifying = re.search(r'^@\s*Verifying .+:.+@@\s*Verifying (.+: .+)\(not proven\)$', line)                 # Failed
+                if verifying_verified:
+                    print("  ", verifying_verified.group(1))
+                elif verifying_verifying:
+                    print("    Failed to verify", verifying_verifying.group(1))
+                    if direction == "forward":
+                        forward = False                                                             # Forward direction failed
+                    else:
+                        backward = False                                                            # Backward direction failed
+                else:
+                    verifying_only = re.search(r'^@\s*(Verifying .+:.+)@@$', line)
+                    verified_only  = re.search(r'^Verified (.+:.+$)', line)
+                    if verified_only:
+                        if re.search(r'Verified .+: .+in [0-9]+\.[0-9]+ seconds', line):
+                            print("    ", line)
+                        elif re.search('\(not proven\)$', line):
+                            print("    Failed to verify", verified_only.group(1))
+                            if direction == "forward":
+                                forward = False                                                             # Forward direction failed
+                            else:
+                                backward = False                                                            # Backward direction failed
+                    if verifying_only:
+                        print("\t", verifying_only.group(1))
         return_code = p.wait()
         if return_code:
+            print(error_log)
             raise sproc.CalledProcessError(return_code, command)
             sys.exit(1)
-    if re.search(r'\(not proven\)', outp):
-        return False
-    else:
-        return True
+        return success
 
 if __name__ == "__main__":
     assert (sys.version_info >= (3, 6, 9)), "This script requires Python v3.6.9 (or later). Try python3"
+    atexit.register(cleanup)
     try:
         clingo_check = sproc.run('clingo --version', encoding='utf-8', stdout=sproc.PIPE, stderr=sproc.PIPE, shell=True)
         clingo_check.check_returncode()
     except sproc.CalledProcessError:
         print("Error running clingo! Is it installed?")
         sys.exit(1)
-    files, aux, time = parse_cmd()
+    aux, time = parse_cmd()
     inputs, outputs = get_ug_preds(files["ctx"])
     files["orig"], orig = preprocess(files["orig"], "orig", 1, inputs, outputs)
     files["alt"], alt = preprocess(files["alt"], "alt", 2, inputs, outputs)
@@ -320,12 +362,17 @@ if __name__ == "__main__":
     else:
         sproc.call("touch .spec", shell=True)
         final_spec = generate_spec(completions, ".spec", orig, aux) 
+    files["spec"] = final_spec
     success = verify(files["alt"], final_spec, time, True)
     if success:
+        print("BOTTOM LINE: AP2P found a proof of equivalence between the programs!\n")
         global_summary["equiv"] = "Equivalent"
     else:
         #print("\n\nTrying again without simplification...\n\n")
         global_summary["equiv"] = "Not"
-    with open(files["orig"]+"-summary.json", "w") as f:
-        json.dump(global_summary, f)
-    f.close()
+        print("BOTTOM LINE: AP2P was unable to find a proof of equivalence between the programs within the time limit.\n")
+    if debug:
+        with open(files["orig"]+"-summary.json", "w") as f:
+            json.dump(global_summary, f)
+        f.close()
+
