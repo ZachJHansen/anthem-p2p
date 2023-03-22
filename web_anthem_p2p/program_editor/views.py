@@ -16,11 +16,9 @@ def verify(request):
         rp = request.POST
         form = InputForm(rp)
         if form.is_valid():
-            outp = run_anthem_p2p(form.cleaned_data)
-        if re.search(r'\(not proven\)', outp):
-            outp = outp + "\nBOTTOM LINE: AP2P was unable to find a proof of equivalence between the programs within the time limit."
-        else:
-            outp = outp + "\n BOTTOM LINE: AP2P found a proof of equivalence between the programs!"
+            outp, code = run_anthem_p2p(form.cleaned_data)
+        if code != 0:
+                outp = "Error running Anthem-P2P!\n" + outp
         form = OutputForm({
             'time_limit': rp['time_limit'],
             'original_program': rp['original_program'],
@@ -48,7 +46,7 @@ def run_anthem_p2p(raw_map):
     with open(lem_name, "w") as f:
         f.writelines(raw_map["helper_lemmas"])
     f.close()
-    time_limit = 300
+    time_limit = 10                                                     # 10 second default time limit
     try:
         tl = raw_map.get("time_limit", 30)
         if tl and tl.strip():
@@ -62,78 +60,18 @@ def run_anthem_p2p(raw_map):
         ap2p_out = sproc.run(command, encoding='utf-8', stdout=sproc.PIPE, shell=True)  # Run anthem-p2p.py
         print(ap2p_out.stdout)
         ap2p_out.check_returncode()
-        ret_code = 1
+        ret_code = 0
     except sproc.CalledProcessError:
-        print("Error running anthem-p2p: ", ap2p_out.stderr)
-        ret_code = 2
+        print("Error running anthem-p2p: ", ap2p_out.stdout)
+        ret_code = 1
     sproc.call("rm " + orig_name, shell=True)
     sproc.call("rm " + alt_name, shell=True)
     sproc.call("rm " + ug_name, shell=True)
     sproc.call("rm " + lem_name, shell=True)
-    sproc.call("rm new-*.lp", shell=True)
-    sproc.call("rm temp-*.spec", shell=True)
-    if ret_code != 1:
-        print("Error running Anthem-P2P...")
-    return refactor_output(ap2p_out.stdout)
-
-def refactor_output(outp):
-    direction = "forward"
-    forward, backward = True, True
-    final_output = ["Attempting to derive completed definitions in the original program (_1) from completed definitions in the alternative program (_2)..."] 
-    for line in outp.split("\n"):
-        presupp = re.search(r'(Presupposed .+$)', line)
-        if presupp:
-            final_output.append('\t' + presupp.group(1))
-        elif re.search(r'Finished verification of specification from translated program', line):
-            if forward:
-                final_output.append("\tFinished deriving the original program from the alternative program")
-            else:
-                final_output.append("\tUnable to derive the original program from the alternative program")
-            direction = "backward"
-            final_output.append("Attempting to derive completed definitions in the alternative program (_2) from completed definitions in the original program (_1)...")
-        elif re.search(r'Finished verification of translated program from specification', line):
-            if backward:
-                final_output.append("\tFinished deriving the alternative program from the original program")
-            else:
-                final_output.append("\tUnable to derive the alternative program from the original program")
-        else:
-            failed_spec = re.search(r'(^.+Verifying spec:.+)(Verifying spec: .+ \(not proven\)$)', line)
-            failed_lemma = re.search(r'(^.+Verifying lemma:.+)(Verifying lemma: .+ \(not proven\)$)', line)
-            failed_comp = re.search(r'(^.+Verifying completed definition .+)(Verifying completed definition .+ \(not proven\)$)', line)
-            if failed_lemma:
-                final_output.append('\t  ' + failed_lemma.group(2) + "\n\t  Failed to prove the preceding lemma!")
-            elif failed_spec:
-                final_output.append('\t  ' + failed_spec.group(2) + "\n\t  Failed to prove the preceding spec!")
-            else:
-                if failed_comp:
-                    final_output.append('\t  ' + failed_comp.group(2) + "\n\t Failed to prove the preceding completed definition!")
-            if failed_spec or failed_comp:
-                if direction == "forward":
-                    forward = False
-                if direction == "backward":
-                    backward = False
-            succ_spec = re.search(r'(Verified spec: .+$)', line)
-            succ_lemma = re.search(r'(Verified lemma: .+$)', line)
-            succ_comp = re.search(r'(Verified completed definition .+$)', line)
-            if succ_spec:
-                final_output.append('\t  ' + succ_spec.group(1))
-            elif succ_lemma:
-                final_output.append('\t  ' + succ_lemma.group(1))
-            else:
-                if succ_comp:
-                    final_output.append('\t  ' + succ_comp.group(1))
-    return '\n'.join(final_output)
-
-
-
-
-
-
-
-
-
-
-
+    if ret_code != 0:
+        return ap2p_out.stdout, 1
+    else:
+        return ap2p_out.stdout, 0
 
 
 
