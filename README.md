@@ -4,7 +4,7 @@
 
 ## Overview
 
-`anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem`](https://github.com/potassco/anthem). See this [`manuscript`](http://www.cs.utexas.edu/users/vl/papers/refactoring6.pdf) for details on the inner workings. You can also experiment in your browser at this link (w.i.p.).
+`anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem`](https://github.com/potassco/anthem). See this [`manuscript`](http://www.cs.utexas.edu/users/vl/papers/refactoring6.pdf) for details on the inner workings. You can also experiment in your browser at this [`link`](https://ap2p.unomaha.edu/).
 
 
 ## Building
