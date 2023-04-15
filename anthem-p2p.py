@@ -35,7 +35,13 @@ def parse_cmd():
         parser.add_argument("-c", "--cores", required=False, dest="cores", help="Number of cores invoked by Vampire")
         parser.add_argument("-v", "--verbose", required=False, dest="verbose", help="Extra error messages (y/n)")
         args = parser.parse_args()
-        cores = int(args.cores)
+        if args.cores:
+            cores = int(args.cores)
+            if cores < 2:
+                print("Anthem cannot be run with fewer than 2 cores! Continuing with 2 cores...")
+                cores = 2
+        else:
+            cores = None
     except Exception as e:
         print(e)
         sys.exit(1)
@@ -58,9 +64,6 @@ def parse_cmd():
         print("\n####### Input Files (Original, Alternative, Context) #######")
         print(files)
         print("")
-    if cores < 2:
-        print("Anthem cannot be run with fewer than 2 cores! Continuing with 2 cores...")
-        cores = 2
     return aux, args.time, cores
 
 # All predicates occurring in an "input: p/n" or "output: p/n" statement
@@ -285,7 +288,8 @@ def verify(lp_path, spec_path, cores, time_limit, simplify=True):
         command = "./anthem verify-program --no-simplify " + lp_path + " " + spec_path
     if time_limit is not None:
         command += " --time-limit " + str(time_limit)
-    command += " --cores " + str(cores)
+    if cores is not None:
+        command += " --cores " + str(cores)
     error_log = ''
     with sproc.Popen(command, stdout=sproc.PIPE, stderr=sproc.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
         print("Attempting to derive completed definitions in the original program (_1) from completed definitions in the alternative program (_2)...")
