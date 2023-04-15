@@ -1,4 +1,4 @@
-import json, argparse, atexit
+import os, json, argparse, atexit
 import subprocess as sproc
 from program import *
 
@@ -11,7 +11,7 @@ files = {"orig": None, "alt": None, "spec": None}
 # a string containing helper lemmas
 def parse_lemmas(fname):
     aux = []
-    if fname is not None:
+    if fname is not None and os.path.isfile(fname):
         spec_exp = r'.*.spec'
         if re.search(spec_exp, fname):
             f = open(fname, "r")
@@ -75,7 +75,7 @@ def get_ug_preds(fp):
     inp_exp = r'^input:.+$'
     outp_exp = r'^output:.+$'
     pred_exp = r'\w+/\d+.|\w+/\d+ *,'
-    if fp is not None:
+    if fp is not None and os.path.isfile(fp):
         with open(fp, "r") as f:
             raw = f.readlines()
             for line in raw:
@@ -99,7 +99,7 @@ def get_ug_preds(fp):
             print(outputs)
         return inputs, outputs
     else:
-        print("Fatal error")
+        print("File", fp, "not found! Stopping...")
         sys.exit(1)
 
 
@@ -120,9 +120,13 @@ def syntax_check(fp):
 def preprocess(fp, name, addendum, inputs, outputs):
     syntax_check(fp)
     try:
-        with open(fp, "r") as f:
-            program = Program(name, f.readlines(), verbose_flag)
-        f.close()
+        if os.path.isfile(fp):
+            with open(fp, "r") as f:
+                program = Program(name, f.readlines(), verbose_flag)
+            f.close()
+        else:
+            print("File", fp, "not found. Stopping...")
+            sys.exit(1)
         program.rename_predicates(inputs, outputs, addendum)
         path = "/".join(fp.split("/")[0:-1])
         if len(path) != 0:
@@ -269,12 +273,15 @@ def generate_spec(completions, context_path, orig, aux):
 
 
 def cleanup():
-    if files["orig"]:
-        sproc.call("rm " + files["orig"], shell=True)
-    if files["alt"]:
-        sproc.call("rm " + files["alt"], shell=True)
-    if files["spec"]:
-        sproc.call("rm " + files["spec"], shell=True)
+    try:
+        if files["orig"] and os.path.isfile(files["orig"]):
+            sproc.call("rm " + files["orig"], shell=True)
+        if files["alt"] and os.path.isfile(files["alt"]):
+            sproc.call("rm " + files["alt"], shell=True)
+        if files["spec"] and os.path.isfile(files["spec"]):
+            sproc.call("rm " + files["spec"], shell=True)
+    except:
+        pass
 
 # Verify lp against spec
 def verify(lp_path, spec_path, cores, time_limit, simplify=True):
