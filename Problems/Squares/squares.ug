@@ -1,0 +1,3 @@
+input: n -> integer.
+assume: n > 0.
+output: p/1.

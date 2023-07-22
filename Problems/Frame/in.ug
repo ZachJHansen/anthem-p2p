@@ -1,0 +1,25 @@
+input: h -> integer, in0/2, goto/3, person/1.
+assume: h >= 0.
+output: in/3.
+
+assume: forall X,Y (in0(X,Y) -> person(X) ).
+assume: forall X,Y,Z (goto(X,Y,Z) -> person(X) ).
+assume: forall X,Y,Z (in(X,Y,Z) -> person(X) ).
+
+
+
+# Break up the Backward direction into 2 directions to make it easier for Vampire to resolve
+# In Backward direction, Anthem assumes the spec and attempts to prove the completed definition of in/3:
+# completed definition of in/3:
+# easy
+#lemma(forward): forall X1, X2, X3 (in(X1, X2, X3) -> in0(X1, X2) and X3 = 0
+#                                                      or exists X4 (goto(X1, X2, X4) and exists N1 (X3 = N1 + 1 and N1 = X4))
+#                                                      or exists X5 (in(X1, X2, X5) and not go_2(X1, X5) and exists N2 (0 <= N2 and N2 <= h - 1 and X5 = N2) and exists N3 (X3 = N3 + 1 and N3 = X5))).
+# hard
+#lemma(forward): forall X1, X2, X3 (in(X1, X2, X3) <- in0(X1, X2) and X3 = 0
+#                                                      or exists X4 (goto(X1, X2, X4) and exists N1 (X3 = N1 + 1 and N1 = X4))
+#                                                      or exists X5 (in(X1, X2, X5) and not go_2(X1, X5) and exists N2 (0 <= N2 and N2 <= h - 1 and X5 = N2) and exists N3 (X3 = N3 + 1 and N3 = X5))).
+
+lemma(forward): forall X1, X2, X3 (in(X1, X2, X3) -> in0(X1, X2) and X3 = 0 or exists X4 (goto(X1, X2, X4) and exists N1 (X3 = N1 + 1 and N1 = X4)) or exists X5 (in(X1, X2, X5) and not go_1(X1, X5) and exists N2, N3 (exists N4 (N2 = N4 - 1 and N4 = h) and 0 <= N3 and N3 <= N2 and X5 = N3) and exists N5 (X3 = N5 + 1 and N5 = X5))).
+lemma(forward): forall X1, X2, X3 (in(X1, X2, X3) <- in0(X1, X2) and X3 = 0 or exists X4 (goto(X1, X2, X4) and exists N1 (X3 = N1 + 1 and N1 = X4)) or exists X5 (in(X1, X2, X5) and not go_1(X1, X5) and exists N2, N3 (exists N4 (N2 = N4 - 1 and N4 = h) and 0 <= N3 and N3 <= N2 and X5 = N3) and exists N5 (X3 = N5 + 1 and N5 = X5))).
+
