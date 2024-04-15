@@ -1,4 +1,4 @@
 input: n -> integer.
 assume: n >= 1.
-output: q/1.
+output: q/2.
 
