@@ -1,10 +1,14 @@
+#[DEPRECATED]
+
+Thanks for your interest in `anthem-p2p`! I am happy to announce that this system has been superceded by a newer, better system called [`anthem 2.0`](https://github.com/potassco/anthem). All of `anthem-p2p's` capabilities have been included in that system (and the documentation is better)!
+
 # anthem-p2p
 
 > Verify the equivalence of external behavior for two answer set programs
 
 ## Overview
 
-`anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem`](https://github.com/potassco/anthem). See this [`manuscript`](http://www.cs.utexas.edu/users/vl/papers/refactoring6.pdf) for details on the inner workings. You can also experiment in your browser at this [`link`](https://ap2p.unomaha.edu/).
+`anthem-p2p` compares two ASP programs (written in the input language of [`clingo`](https://github.com/potassco/clingo)) and verifies that they are equivalent within the context of a "user guide." It accomplishes this by invoking the software verifcation tool [`anthem-1`](https://github.com/potassco/anthem-1). See this [`manuscript`](http://www.cs.utexas.edu/users/vl/papers/refactoring6.pdf) for details on the inner workings. You can also experiment in your browser at this [`link`](https://ap2p.unomaha.edu/).
 
 
 ## Building
