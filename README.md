@@ -1,4 +1,4 @@
-#[DEPRECATED]
+# [DEPRECATED]
 
 Thanks for your interest in `anthem-p2p`! I am happy to announce that this system has been superceded by a newer, better system called [`anthem 2.0`](https://github.com/potassco/anthem). All of `anthem-p2p's` capabilities have been included in that system (and the documentation is better)!
 
